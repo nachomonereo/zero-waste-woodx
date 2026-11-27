@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=15" />
+  <link rel="stylesheet" href="styles.css?v=16" />
   <script type="importmap">
     {
       "imports": {
@@ -267,17 +267,22 @@
           </div>
         </div>
         <div class="shop-topbar-actions">
-          <button type="button" class="btn-factory" id="btnShopSendFactory">
-            <span id="lblShopBtnFactory">SEND TO FACTORY</span>
-          </button>
-          <button type="button" class="btn-secondary" id="btnShareShopLink">
-            <span id="lblShopBtnShare">SHARE LINK</span>
+          <div class="mini-btns" id="shopBitButtons" style="display:flex;gap:4px;margin-right:6px;" title="Factory Bit Override">
+            <button type="button" class="mini-btn" data-shop-bit="6" style="padding:5px 8px;">BIT 6mm</button>
+            <button type="button" class="mini-btn" data-shop-bit="10" style="padding:5px 8px;">BIT 10mm</button>
+            <button type="button" class="mini-btn" data-shop-bit="12" style="padding:5px 8px;">BIT 12mm</button>
+          </div>
+          <button type="button" class="btn-primary" id="btnShopDownloadDXF">
+            <span>.DXF (CNC)</span>
           </button>
           <button type="button" class="btn-secondary" id="btnDownloadShopHTML">
-            <span>.HTML</span>
+            <span>.HTML (INTERACTIVE)</span>
           </button>
-          <button type="button" class="btn-primary" id="btnPrintShopPDF">
+          <button type="button" class="btn-secondary" id="btnPrintShopPDF">
             <span id="lblShopBtnPdf">SAVE PDF</span>
+          </button>
+          <button type="button" class="btn-factory" id="btnShopSendFactory">
+            <span id="lblShopBtnFactory">SEND TO FACTORY</span>
           </button>
           <button type="button" class="btn-secondary" id="btnCloseShopModal">
             <span id="lblShopBtnClose">CLOSE</span>
@@ -388,6 +393,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=15"></script>
+  <script type="module" src="app.js?v=16"></script>
 </body>
 </html>

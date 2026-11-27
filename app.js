@@ -2,17 +2,24 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // ============================================================================
-// WOOD-X // 100% ZERO-WASTE PARAMETRIC FURNITURE & ARCHITECTURAL STUDIO (v6)
-// - 8 Zero-Waste Typologies:
-//   01 / Modular Sofa & Chair (Backrest has real 3D Mortise Hole for Seat Tenon Tooth!)
-//   02 / Tapered Plank Chair (199.6×20cm Chair with Batch Multiplier: 1 to 6 Chairs)
-//   03 / Vaulted Arch Stool (9 Parts: Disc + 4 Vaulted Legs + 4 Rounded Corner Shelves)
-//   04 / Nested L-Leg Table (7 Parts: Exact 4-View Blueprint + Rounded Corner Fillets)
-//   05 / X-Corner Boomerang Table (3 Parts: Fixed Clean Top-Right Corner + X-Crown)
-//   06 / Chevron Fin Shelf (Slotted Vertical Chevron Fins — 0 Collision with Shelves!)
-//   07 / Credenza Cabinet (10 Parts: 2-Door Sideboard + Open Lower Plinth + Interior Shelves)
-//   08 / Zero-Waste Wave Wall (Customizable Flow / Alternating / Mirror Slat Wall)
-// - Includes Shareable URL Link Generator (#btnShareLink)
+// WOOD-X // EDITABLE FACTORY & STUDIO CONFIGURATION (CAMBIA EL CORREO AQUÍ)
+// ============================================================================
+export const WOODX_CONFIG = {
+  // 1. CORREO DE LA FÁBRICA (HERO) — Edita esta línea cuando tengas el email definitivo:
+  factoryEmail: 'nacho.monereo@iaac.net',
+  factoryName: 'HERO FACTORY',
+
+  // 2. OPCIONES FIJAS DE BROCA / FRESA CNC (en mm) Y ESPESOR POR DEFECTO:
+  defaultBitMm: 6,
+  allowedBitsMm: [6, 10, 12],
+  defaultThicknessMm: 24,
+
+  // 3. TABLERO ESTÁNDAR (122 x 244 cm = 2440 x 1220 mm):
+  standardBoard: { L: 2440, W: 1220 }
+};
+
+// ============================================================================
+// WOOD-X // 100% ZERO-WASTE PARAMETRIC FURNITURE & ARCHITECTURAL STUDIO
 // ============================================================================
 
 const SWISS_PALETTE = [
@@ -4191,8 +4198,8 @@ const btnToggleLayerInt = document.getElementById('btnToggleLayerInt');
 const btnToggleLayerOff = document.getElementById('btnToggleLayerOff');
 
 function syncKerfDisplay() {
-  if (![6, 10, 12].includes(Math.round(state.kerfWidth))) {
-    state.kerfWidth = 6;
+  if (!WOODX_CONFIG.allowedBitsMm.includes(Math.round(state.kerfWidth))) {
+    state.kerfWidth = WOODX_CONFIG.defaultBitMm;
   }
   const rel = state.kerfWidth / 2;
   const valKerfEl = document.getElementById('valKerf');
@@ -4201,6 +4208,10 @@ function syncKerfDisplay() {
   }
   document.querySelectorAll('#bitFixedButtons [data-bit]').forEach((btn) => {
     const bVal = parseFloat(btn.getAttribute('data-bit'));
+    btn.classList.toggle('active', Math.abs(bVal - state.kerfWidth) < 0.2);
+  });
+  document.querySelectorAll('#shopBitButtons [data-shop-bit]').forEach((btn) => {
+    const bVal = parseFloat(btn.getAttribute('data-shop-bit'));
     btn.classList.toggle('active', Math.abs(bVal - state.kerfWidth) < 0.2);
   });
 }
@@ -4213,9 +4224,18 @@ sliderThickness.addEventListener('input', () => {
 
 document.querySelectorAll('#bitFixedButtons [data-bit]').forEach((btn) => {
   btn.addEventListener('click', () => {
-    state.kerfWidth = parseFloat(btn.getAttribute('data-bit')) || 6;
+    state.kerfWidth = parseFloat(btn.getAttribute('data-bit')) || WOODX_CONFIG.defaultBitMm;
     syncKerfDisplay();
     rebuildSceneAndSheet();
+  });
+});
+
+document.querySelectorAll('#shopBitButtons [data-shop-bit]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    state.kerfWidth = parseFloat(btn.getAttribute('data-shop-bit')) || WOODX_CONFIG.defaultBitMm;
+    syncKerfDisplay();
+    rebuildSceneAndSheet();
+    buildShopDrawingBlueprint();
   });
 });
 
@@ -4281,11 +4301,11 @@ if (btnResetCam) {
 // ============================================================================
 // SHAREABLE DESIGN LINK GENERATOR & URL STATE RESTORATION
 // ============================================================================
-function generateShareableURL(openShopPlan = false) {
+function generateShareableURL(openShopPlan = false, overrideBit = null) {
   const url = new URL(window.location.href);
   url.searchParams.set('type', state.typology);
   url.searchParams.set('th', String(state.thickness));
-  url.searchParams.set('kerf', String(state.kerfWidth));
+  url.searchParams.set('kerf', String(overrideBit !== null ? overrideBit : state.kerfWidth));
   url.searchParams.set('kmode', state.kerfMode);
   url.searchParams.set('fcomp', state.fitCompMode);
   url.searchParams.set('mat', state.materialMode);
@@ -5115,6 +5135,7 @@ function buildShopDrawingBlueprint() {
 }
 
 function openShopDrawingModal() {
+  syncKerfDisplay();
   buildShopDrawingBlueprint();
   shopDrawingModal.hidden = false;
 }
@@ -5127,9 +5148,19 @@ document.getElementById('btnCloseShopModal').addEventListener('click', () => {
   shopDrawingModal.hidden = true;
 });
 
-document.getElementById('btnShareShopLink').addEventListener('click', () => {
-  copyAndShowShareToast(generateShareableURL(true));
-});
+const btnShareShopLinkEl = document.getElementById('btnShareShopLink');
+if (btnShareShopLinkEl) {
+  btnShareShopLinkEl.addEventListener('click', () => {
+    copyAndShowShareToast(generateShareableURL(true));
+  });
+}
+
+const btnShopDownloadDXFEl = document.getElementById('btnShopDownloadDXF');
+if (btnShopDownloadDXFEl) {
+  btnShopDownloadDXFEl.addEventListener('click', () => {
+    downloadCurrentDxfFile();
+  });
+}
 
 document.getElementById('btnPrintShopPDF').addEventListener('click', () => {
   buildShopDrawingBlueprint();
@@ -5139,16 +5170,60 @@ document.getElementById('btnPrintShopPDF').addEventListener('click', () => {
 function downloadShopDrawingHtmlFile() {
   buildShopDrawingBlueprint();
   const cfg = TYPOLOGY_CONFIG[state.typology];
+  const savedKerf = state.kerfWidth;
+
+  // Pre-build 1:1 CNC DXF files & execution dimension maps for all 3 factory bits (6, 10, 12 mm)
+  // so the factory can switch the CNC bit directly inside the standalone interactive HTML file!
+  const factoryBitPackages = {};
+  for (const bitVal of WOODX_CONFIG.allowedBitsMm) {
+    state.kerfWidth = bitVal;
+    rebuildSceneAndSheet();
+    const { dxf, filename } = generateCurrentDxfContentAndFilename();
+    const partDims = currentPiecesData.map((p, idx) => {
+      const [nomW, nomH] = p.nominalBox || [0, 0];
+      const [offW, offH] = p.offsetBox || [0, 0];
+      return {
+        num: String(idx + 1).padStart(2, '0'),
+        name: p.name,
+        color: p.color,
+        nom: `${Math.round(nomW)} × ${Math.round(nomH)} × ${state.thickness} mm`,
+        exec: `${offW.toFixed(1)} × ${offH.toFixed(1)} × ${state.thickness} mm`
+      };
+    });
+    factoryBitPackages[bitVal] = {
+      bit: bitVal,
+      relOffset: bitVal / 2,
+      dxfFilename: filename,
+      dxfContent: dxf,
+      partDims
+    };
+  }
+
+  // Restore original bit
+  state.kerfWidth = savedKerf;
+  syncKerfDisplay();
+  rebuildSceneAndSheet();
+  buildShopDrawingBlueprint();
+
+  const studioEditUrl = generateShareableURL(false);
+  const embeddedPackagesJson = JSON.stringify(factoryBitPackages).replace(/<\//g, '<\\/');
+
   const standaloneHtml = `<!DOCTYPE html>
-<html lang="en">
+<html lang="${state.lang}">
 <head>
   <meta charset="UTF-8" />
-  <title>WOOD-X Architectural Plans & Sections — ${cfg.title} (${state.sheetL}x${state.sheetW}mm)</title>
+  <title>WOOD-X Interactive Factory Blueprint & DXF — ${cfg.title} (${state.sheetL}x${state.sheetW}mm)</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Inter', sans-serif; background: #F5F1E8; color: #141414; margin: 20px; }
-    .print-bar { max-width: 1290px; margin: 0 auto 14px; display: flex; justify-content: space-between; align-items: center; background: #141414; color: #FFF; padding: 10px 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
-    .print-btn { background: #B38B6D; color: #141414; border: none; padding: 8px 16px; font-family: 'JetBrains Mono', monospace; font-weight: 700; cursor: pointer; }
+    .print-bar { max-width: 1290px; margin: 0 auto 14px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; background: #141414; color: #FFF; padding: 10px 16px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; }
+    .print-bar-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .bit-group { display: inline-flex; background: #262626; border: 1px solid #555; }
+    .bit-btn { background: transparent; color: #DDD; border: none; padding: 6px 10px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; cursor: pointer; }
+    .bit-btn.active { background: #1E6B45; color: #FFF; }
+    .print-btn { background: #B38B6D; color: #141414; border: none; padding: 7px 14px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-block; }
+    .dxf-btn { background: #C83228; color: #FFF; border: none; padding: 7px 14px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; cursor: pointer; }
+    .studio-btn { background: #2B2B2B; color: #FFF; border: 1px solid #666; padding: 6px 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; text-decoration: none; }
     .shop-sheet { background: #FFF; border: 2px solid #141414; padding: 22px; max-width: 1290px; margin: 0 auto; }
     .shop-header-banner { display: grid; grid-template-columns: 1.5fr 1fr; border: 1.5px solid #141414; margin-bottom: 16px; }
     .shop-banner-main { padding: 12px 16px; border-right: 1.5px solid #141414; }
@@ -5163,7 +5238,6 @@ function downloadShopDrawingHtmlFile() {
     .shop-view-body { padding: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; }
     .shop-3d-snapshot { width: 100%; max-height: 295px; object-fit: contain; border: 1px solid #D8D3C8; }
     .arch-plans-wrap { border: 1.5px solid #141414; margin-bottom: 16px; background: #FFF; }
-    .arch-plans-3col { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid #D8D3C8; }
     .arch-plans-4col { display: grid; grid-template-columns: repeat(2, 1fr); border-bottom: 1px solid #D8D3C8; }
     .arch-plans-4col .arch-plan-cell { border-bottom: 1px solid #141414; }
     .arch-plans-4col .arch-plan-cell:nth-child(2n) { border-right: none; }
@@ -5173,24 +5247,68 @@ function downloadShopDrawingHtmlFile() {
     .arch-plan-badge { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700; color: #141414; }
     .arch-plan-cut-tag { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 700; padding: 2px 6px; background: #141414; color: #FFF; }
     .arch-sections-2col { display: grid; grid-template-columns: 1fr 1fr; }
-    .arch-legend-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 8px 14px; background: #EFECE4; border-top: 1px solid #141414; font-family: 'JetBrains Mono', monospace; font-size: 10px; }
     .shop-table-wrap { border: 1.5px solid #141414; margin-bottom: 16px; }
     .shop-table { width: 100%; border-collapse: collapse; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
     .shop-table th { background: #EFECE4; text-align: left; padding: 7px 10px; border-bottom: 1.5px solid #141414; border-right: 1px solid #D8D3C8; font-size: 10px; }
     .shop-table td { padding: 6px 10px; border-bottom: 1px solid #D8D3C8; border-right: 1px solid #D8D3C8; }
-    .shop-title-block { border: 1.5px solid #141414; display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; background: #F5F1E8; }
-    .shop-tb-cell { padding: 9px 12px; border-right: 1px solid #141414; }
-    .shop-tb-cell:last-child { border-right: none; }
-    .shop-tb-cell span { display: block; font-size: 9px; color: #666; }
     @media print { .print-bar { display: none; } body { margin: 0; background: #FFF; } @page { size: A3 landscape; margin: 10mm; } }
   </style>
 </head>
 <body>
   <div class="print-bar">
-    <span>WOOD-X // SHAREABLE ARCHITECTURAL PLANS, SECTIONS &amp; CNC CUT LIST</span>
-    <button class="print-btn" onclick="window.print()">PRINT / SAVE AS PDF</button>
+    <span>WOOD-X // INTERACTIVE FACTORY BLUEPRINT &amp; EMBEDDED 1:1 CNC DXF</span>
+    <div class="print-bar-actions">
+      <div class="bit-group" title="Factory CNC Bit Override">
+        <button type="button" class="bit-btn ${savedKerf === 6 ? 'active' : ''}" onclick="setFactoryBit(6)" id="btnBit6">BIT 6mm</button>
+        <button type="button" class="bit-btn ${savedKerf === 10 ? 'active' : ''}" onclick="setFactoryBit(10)" id="btnBit10">BIT 10mm</button>
+        <button type="button" class="bit-btn ${savedKerf === 12 ? 'active' : ''}" onclick="setFactoryBit(12)" id="btnBit12">BIT 12mm</button>
+      </div>
+      <button type="button" class="dxf-btn" onclick="downloadEmbeddedDxf()">DOWNLOAD 1:1 CNC .DXF</button>
+      <a class="studio-btn" href="${studioEditUrl}" target="_blank" rel="noopener">OPEN IN 3D/2D STUDIO</a>
+      <button type="button" class="print-btn" onclick="window.print()">SAVE PDF</button>
+    </div>
   </div>
   <div class="shop-sheet">${shopDrawingSheet.innerHTML}</div>
+  <script>
+    const BIT_PACKAGES = ${embeddedPackagesJson};
+    let activeBit = ${savedKerf};
+
+    function setFactoryBit(bit) {
+      if (!BIT_PACKAGES[bit]) return;
+      activeBit = bit;
+      [6, 10, 12].forEach(b => {
+        const btn = document.getElementById('btnBit' + b);
+        if (btn) btn.classList.toggle('active', b === bit);
+      });
+      const pkg = BIT_PACKAGES[bit];
+      const specCells = document.querySelectorAll('.shop-spec-cell strong');
+      if (specCells.length >= 2) {
+        specCells[1].textContent = pkg.bit + ' mm (-' + pkg.relOffset + ' mm)';
+      }
+      const tbody = document.querySelector('.shop-table tbody');
+      if (tbody) {
+        tbody.innerHTML = pkg.partDims.map(p =>
+          '<tr>' +
+            '<td><strong>#' + p.num + '</strong></td>' +
+            '<td><span style="display:inline-block;width:10px;height:10px;background:' + p.color + ';border:1px solid #141414;margin-right:6px;"></span><strong>' + p.name + '</strong></td>' +
+            '<td>' + p.nom + '</td>' +
+            '<td><strong>' + p.exec + '</strong></td>' +
+          '</tr>'
+        ).join('');
+      }
+    }
+
+    function downloadEmbeddedDxf() {
+      const pkg = BIT_PACKAGES[activeBit] || BIT_PACKAGES[6];
+      const blob = new Blob([pkg.dxfContent], { type: 'application/dxf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = pkg.dxfFilename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
 </body>
 </html>`;
   const filename = `wood-x-shop-drawing-${state.typology}-${state.sheetL}x${state.sheetW}mm.html`;
@@ -5295,6 +5413,9 @@ document.getElementById('btnExportDXF').addEventListener('click', () => {
 // ============================================================================
 const factoryModal = document.getElementById('factoryModal');
 const inputFactoryEmail = document.getElementById('inputFactoryEmail');
+if (inputFactoryEmail) {
+  inputFactoryEmail.value = WOODX_CONFIG.factoryEmail;
+}
 const inputClientName = document.getElementById('inputClientName');
 const inputClientEmail = document.getElementById('inputClientEmail');
 const inputOrderQty = document.getElementById('inputOrderQty');
@@ -5344,7 +5465,7 @@ function updateSidebarFactorySummary() {
   const L = state.sheetL;
   const W = state.sheetW;
   const T = state.thickness;
-  const targetEmail = inputFactoryEmail ? inputFactoryEmail.value.trim() || 'nacho.monereo@iaac.net' : 'nacho.monereo@iaac.net';
+  const targetEmail = inputFactoryEmail ? inputFactoryEmail.value.trim() || WOODX_CONFIG.factoryEmail : WOODX_CONFIG.factoryEmail;
   el.innerHTML = `
     <span><strong>${L}×${W}×${T} mm</strong> → ${targetEmail}</span>
   `;
@@ -5363,7 +5484,7 @@ function buildFactoryExecutionDossier() {
   const clientName = (inputClientName && inputClientName.value.trim()) || 'WOOD-X Client';
   const clientEmail = (inputClientEmail && inputClientEmail.value.trim()) || '-';
   const deliveryNotes = (inputDeliveryCity && inputDeliveryCity.value.trim()) || '-';
-  const factoryEmail = (inputFactoryEmail && inputFactoryEmail.value.trim()) || 'nacho.monereo@iaac.net';
+  const factoryEmail = (inputFactoryEmail && inputFactoryEmail.value.trim()) || WOODX_CONFIG.factoryEmail;
 
   if (lblTargetFactoryEmail) lblTargetFactoryEmail.textContent = factoryEmail;
 
@@ -5376,7 +5497,11 @@ function buildFactoryExecutionDossier() {
 
   const bInfo = getRequiredBoardsInfo(L, W, qty);
   const shareBlueprintUrl = generateShareableURL(true);
-  const { filename: dxfFilename } = generateCurrentDxfContentAndFilename();
+  const shareStudioEditUrl = generateShareableURL(false);
+  const urlBit6 = generateShareableURL(true, 6);
+  const urlBit10 = generateShareableURL(true, 10);
+  const urlBit12 = generateShareableURL(true, 12);
+  const { dxf: dxfContent, filename: dxfFilename } = generateCurrentDxfContentAndFilename();
   const htmlPlanFilename = `wood-x-shop-drawing-${state.typology}-${L}x${W}mm.html`;
   const locTitle = (I18N[state.lang] && I18N[state.lang].tabs && I18N[state.lang].tabs[state.typology]) || cfg.title;
 
@@ -5405,29 +5530,35 @@ function buildFactoryExecutionDossier() {
     })
     .join('\n');
 
-  const subject = `[WOOD-X -> HERO] ${locTitle} (${qty}x) — ${L}x${W}x${T}mm`;
+  const subject = `[WOOD-X -> HERO] ${locTitle} (${qty}x) — ${L}x${W}x${T}mm — DXF & Plans`;
 
-  const body = `HERO FACTORY — WOOD-X ORDER
+  const body = `HERO FACTORY — WOOD-X CNC ORDER & DXF
 ==================================================
-1. PLANS & DXF LINK:
+1. INTERACTIVE BLUEPRINT & 1:1 CNC .DXF (CURRENT BIT ${K}mm):
 ${shareBlueprintUrl}
 
-2. CLIENT:
+2. FACTORY BIT OVERRIDE & 3D/2D STUDIO EDITOR (KEEPING CLIENT DIMENSIONS ${dims.width}×${dims.depth}×${dims.height} mm):
+- Cut with 6 mm Bit (-3 mm/edge): ${urlBit6}
+- Cut with 10 mm Bit (-5 mm/edge): ${urlBit10}
+- Cut with 12 mm Bit (-6 mm/edge): ${urlBit12}
+- Edit Thickness / Parameters in 3D Studio: ${shareStudioEditUrl}
+
+3. CLIENT:
 - Name: ${clientName} (${clientEmail})
 - Qty: ${qty} | Notes: ${deliveryNotes}
 
-3. MATERIAL & EXECUTION DIMENSIONS:
+4. MATERIAL & EXECUTION DIMENSIONS:
 - Furniture: ${locTitle}
 - Board: ${L} × ${W} × ${T} mm (${bInfo.totalStdSheets}× std 122×244 cm)
 - Size: W ${dims.width} × D ${dims.depth} × H ${dims.height} mm
 - Bit Offset: ${K.toFixed(0)} mm (-${relOffset.toFixed(0)} mm/side)
 
-4. PARTS (${pieces.length}):
+5. PARTS (${pieces.length}):
 ${cutListLines}
 
-5. FILES:
-- DXF: ${dxfFilename}
-- Plans (PDF/HTML): ${htmlPlanFilename}
+6. FILES FOR FACTORY:
+- 1:1 CNC DXF: ${dxfFilename}
+- Interactive Blueprint & Assembly HTML/PDF (includes embedded 6/10/12mm DXF): ${htmlPlanFilename}
 ==================================================`;
 
   const compactMailBody = body;
@@ -5436,7 +5567,7 @@ ${cutListLines}
     textareaFactoryDossier.value = body;
   }
 
-  return { factoryEmail, clientName, clientEmail, qty, cfg, L, W, T, K, bInfo, dims, shareBlueprintUrl, subject, body, compactMailBody, dxfFilename, htmlPlanFilename };
+  return { factoryEmail, clientName, clientEmail, qty, cfg, L, W, T, K, bInfo, dims, shareBlueprintUrl, shareStudioEditUrl, urlBit6, urlBit10, urlBit12, subject, body, compactMailBody, dxfContent, dxfFilename, htmlPlanFilename };
 }
 
 function openFactoryModal() {
@@ -5536,7 +5667,13 @@ if (btnFactoryDirectSend) {
           assembled_dimensions: `W ${info.dims.width} x D ${info.dims.depth} x H ${info.dims.height} mm`,
           cnc_bit_offset: `Bit Ø ${info.K} mm (Relative Offset -${(info.K / 2).toFixed(1)} mm/edge)`,
           direct_blueprint_and_dxf_link: info.shareBlueprintUrl,
-          execution_dossier: info.body
+          factory_cut_with_6mm_bit_link: info.urlBit6,
+          factory_cut_with_10mm_bit_link: info.urlBit10,
+          factory_cut_with_12mm_bit_link: info.urlBit12,
+          factory_edit_in_3d_studio_link: info.shareStudioEditUrl,
+          execution_dossier: info.body,
+          cnc_dxf_filename: info.dxfFilename,
+          cnc_dxf_1to1_content: info.dxfContent
         })
       });
 
