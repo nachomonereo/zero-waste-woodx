@@ -33,16 +33,16 @@ const state = {
   sheetL: 1260,     // Automatically computed from active typology parameters
   sheetW: 1200,     // Automatically computed from active typology parameters
   thickness: 24,    // mm
-  kerfWidth: 3.2,   // mm (Tool kerf width: Circular Saw Blade = 3.2mm, CNC Bit = 6.0mm, etc.)
-  kerfMode: 'shared', // 'shared' (Interior -K/2, Outer 0), 'all_half' (All -K/2), 'full_kerf' (Interior -K, Outer -K/2)
-  fitCompMode: 'auto_tighten', // 'auto_tighten' (Tighten 3D assembly & pre-compensate mortises) | 'expand_nominal' (+K path allowance)
+  kerfWidth: 6.0,   // Fixed 3-option Bit diameter: 6, 10, or 12 mm (Default 6 mm -> -3.0 mm/edge offset)
+  kerfMode: 'shared', // Shared cut line (-K/2 interior, 0 exterior)
+  fitCompMode: 'auto_tighten', // Auto-tighten 3D assembly & pre-compensate mortises
   showLayerExterior: true,
   showLayerInterior: true,
   showLayerOffsets: true,
   showDims2D: true,
   zoom2D: 1.0,
   pan2D: [0, 0],
-  archViewMode: '3d', // '3d' | 'multi' | 'top' | 'secA' | 'secB' | 'secC' | 'front_DD' | 'side_EE'
+  archViewMode: '3d',
   assembly: 1.0,    // 100% assembled 3D furniture
   materialMode: 'butcher',
   selectedPieceId: null,
@@ -3125,25 +3125,11 @@ function rebuildSceneAndSheet() {
 
   const kerfSummaryEl = document.getElementById('liveKerfSummary');
   if (kerfSummaryEl) {
-    kerfSummaryEl.textContent = `${modeLabel} · Kerf K=${state.kerfWidth.toFixed(1)}mm · Relative Offset: -${relOffsetPerSide.toFixed(2)}mm/edge`;
-  }
-
-  const intLenEl = document.getElementById('valInteriorCutLen');
-  const extLenEl = document.getElementById('valExteriorCutLen');
-  const lossEl = document.getElementById('valKerfLossPct');
-  if (intLenEl) {
-    intLenEl.textContent = `${(currentCncAnalysis.deduplicatedInteriorLen / 1000).toFixed(2)} m`;
-  }
-  if (extLenEl) {
-    extLenEl.textContent = `${(currentCncAnalysis.exteriorCutLen / 1000).toFixed(2)} m`;
-  }
-  if (lossEl) {
-    lossEl.textContent = `${kerfLossPct.toFixed(1)}%`;
+    kerfSummaryEl.textContent = `Bit Ø ${state.kerfWidth.toFixed(0)} mm · Relative Part Offset: -${relOffsetPerSide.toFixed(1)} mm/edge`;
   }
 
   document.getElementById('header2DTitle').textContent =
-    `Stock Board: ${state.sheetL} × ${state.sheetW} mm${stdSheetTag} · Shared Cut Offset -${relOffsetPerSide.toFixed(1)}mm`;
-  document.getElementById('pieceCountTag').textContent = `${pieces.length} PARTS`;
+    `Stock Board: ${state.sheetL} × ${state.sheetW} mm${stdSheetTag} · Bit Offset -${relOffsetPerSide.toFixed(1)} mm`;
 
   const cfg = TYPOLOGY_CONFIG[state.typology];
   document.getElementById('slidersSectionTitle').textContent = cfg.sectionTitle;
@@ -3161,12 +3147,10 @@ function rebuildSceneAndSheet() {
 
   document.getElementById('overlayModelName').textContent = cfg.title;
   document.getElementById('overlayDimsText').textContent =
-    `W ${summaryDims.width} × D ${summaryDims.depth} × H ${summaryDims.height} mm | Kerf K=${state.kerfWidth.toFixed(1)}mm (-${relOffsetPerSide.toFixed(1)}mm/side)`;
+    `W ${summaryDims.width} × D ${summaryDims.depth} × H ${summaryDims.height} mm | Bit Ø ${state.kerfWidth.toFixed(0)}mm (-${relOffsetPerSide.toFixed(1)}mm/edge)`;
 
   render2DSheet(pieces, handles);
   render3DFurniture(pieces);
-  renderLiveArchitecturalPlanOverlay();
-  renderPieceList(pieces);
   updatePieceHUD();
   updateSidebarFactorySummary();
 }
@@ -3713,49 +3697,15 @@ function selectPiece(pieceId) {
   rebuildSceneAndSheet();
 }
 
-function renderPieceList(pieces) {
-  const listEl = document.getElementById('pieceList');
-  listEl.innerHTML = pieces
-    .map((p, idx) => {
-      const isSel = state.selectedPieceId === p.id;
-      const num = String(idx + 1).padStart(2, '0');
-      const [offW, offH] = p.offsetBox || p.nominalBox || [0, 0];
-      const [dW, dH] = p.offsetDelta || [0, 0];
-      const offsetTag =
-        state.kerfWidth > 0.05 && state.fitCompMode !== 'expand_nominal'
-          ? `${offW.toFixed(1)}×${offH.toFixed(1)}mm (${dW.toFixed(1)}/${dH.toFixed(1)})`
-          : p.role;
-      return `
-        <div class="piece-item ${isSel ? 'selected' : ''}" data-piece-id="${p.id}">
-          <div class="piece-item-left">
-            <span class="swatch" style="background:${p.color}"></span>
-            <span><strong>#${num}</strong> ${p.name}</span>
-          </div>
-          <span class="piece-meta">${offsetTag}</span>
-        </div>
-      `;
-    })
-    .join('');
-
-  listEl.querySelectorAll('.piece-item').forEach((item) => {
-    item.addEventListener('click', () => {
-      selectPiece(item.getAttribute('data-piece-id'));
-    });
-  });
-}
-
 function updatePieceHUD() {
   const hud = document.getElementById('pieceHud');
-  const banner = document.getElementById('selectedPieceBanner');
   const pin3D = document.getElementById('pin3D');
   const idx = currentPiecesData.findIndex((p) => p.id === state.selectedPieceId);
   const piece = currentPiecesData[idx];
 
   if (!piece) {
-    hud.hidden = true;
-    pin3D.hidden = true;
-    banner.innerHTML =
-      'Click any part in <strong>3D</strong> or on the <strong>2D Board</strong> to inspect its shared cut lines and post-kerf offset dimensions.';
+    if (hud) hud.hidden = true;
+    if (pin3D) pin3D.hidden = true;
     return;
   }
 
@@ -3763,26 +3713,19 @@ function updatePieceHUD() {
   const [nomW, nomH] = piece.nominalBox || [0, 0];
   const [offW, offH] = piece.offsetBox || [0, 0];
   const [dW, dH] = piece.offsetDelta || [0, 0];
-  const kerfInfo =
-    state.kerfWidth > 0.05
-      ? state.fitCompMode === 'expand_nominal'
-        ? `Nominal & Finished: ${nomW.toFixed(1)}×${nomH.toFixed(1)} mm (+K Path Allowance Applied — 0.0mm Loss)`
-        : `Nominal: ${nomW.toFixed(1)}×${nomH.toFixed(1)} mm → Post-Kerf Offset: ${offW.toFixed(1)}×${offH.toFixed(1)} mm (Δ ${dW.toFixed(1)} / ${dH.toFixed(1)} mm · 3D Auto-Tightened)`
-      : `Nominal: ${nomW.toFixed(1)}×${nomH.toFixed(1)} mm (Zero-Kerf CAD)`;
+  const kerfInfo = `Nominal: ${nomW.toFixed(1)}×${nomH.toFixed(1)} mm → Finished: ${offW.toFixed(1)}×${offH.toFixed(1)} mm (Δ ${dW.toFixed(1)} / ${dH.toFixed(1)} mm)`;
 
-  hud.hidden = false;
-  document.getElementById('hudColor').style.background = piece.color;
-  document.getElementById('hudTitle').textContent = `#${numStr} ${piece.name} — ${kerfInfo}`;
-  document.getElementById('hudDesc').textContent = piece.sharedWith;
+  if (hud) {
+    hud.hidden = false;
+    document.getElementById('hudColor').style.background = piece.color;
+    document.getElementById('hudTitle').textContent = `#${numStr} ${piece.name} — ${kerfInfo}`;
+    document.getElementById('hudDesc').textContent = piece.sharedWith;
+  }
 
-  pin3D.hidden = false;
-  document.getElementById('pin3DTag').textContent = `HERE IN 3D: #${numStr} ${piece.name.toUpperCase()}`;
-
-  banner.innerHTML = `
-    <strong>#${numStr} ${piece.name}</strong><br/>
-    <span style="font-family:var(--font-mono);font-size:10.5px;">${kerfInfo}</span><br/>
-    ${piece.sharedWith}
-  `;
+  if (pin3D) {
+    pin3D.hidden = false;
+    document.getElementById('pin3DTag').textContent = `PART #${numStr} ${piece.name.toUpperCase()}`;
+  }
 }
 
 function update3DPinPosition() {
@@ -3896,26 +3839,23 @@ function syncDynamicSlidersUI() {
 }
 
 const sliderThickness = document.getElementById('sliderThickness');
-const selectKerfPreset = document.getElementById('selectKerfPreset');
-const sliderKerf = document.getElementById('sliderKerf');
-const selectKerfMode = document.getElementById('selectKerfMode');
-const selectFitComp = document.getElementById('selectFitComp');
 const btnToggleLayerExt = document.getElementById('btnToggleLayerExt');
 const btnToggleLayerInt = document.getElementById('btnToggleLayerInt');
 const btnToggleLayerOff = document.getElementById('btnToggleLayerOff');
 
 function syncKerfDisplay() {
-  const rel =
-    state.fitCompMode === 'expand_nominal'
-      ? 0
-      : state.kerfMode === 'full_kerf'
-      ? state.kerfWidth
-      : state.kerfWidth / 2;
-  document.getElementById('valKerf').textContent =
-    state.fitCompMode === 'expand_nominal'
-      ? `${state.kerfWidth.toFixed(1)} mm (+K Compensated)`
-      : `${state.kerfWidth.toFixed(1)} mm (Offset -${rel.toFixed(2)} mm)`;
-  sliderKerf.value = String(state.kerfWidth);
+  if (![6, 10, 12].includes(Math.round(state.kerfWidth))) {
+    state.kerfWidth = 6;
+  }
+  const rel = state.kerfWidth / 2;
+  const valKerfEl = document.getElementById('valKerf');
+  if (valKerfEl) {
+    valKerfEl.textContent = `${state.kerfWidth.toFixed(0)} mm (-${rel.toFixed(1)} mm/edge)`;
+  }
+  document.querySelectorAll('#bitFixedButtons [data-bit]').forEach((btn) => {
+    const bVal = parseFloat(btn.getAttribute('data-bit'));
+    btn.classList.toggle('active', Math.abs(bVal - state.kerfWidth) < 0.2);
+  });
 }
 
 sliderThickness.addEventListener('input', () => {
@@ -3924,28 +3864,12 @@ sliderThickness.addEventListener('input', () => {
   rebuildSceneAndSheet();
 });
 
-selectKerfPreset.addEventListener('change', (e) => {
-  state.kerfWidth = parseFloat(e.target.value);
-  syncKerfDisplay();
-  rebuildSceneAndSheet();
-});
-
-sliderKerf.addEventListener('input', () => {
-  state.kerfWidth = parseFloat(sliderKerf.value);
-  syncKerfDisplay();
-  rebuildSceneAndSheet();
-});
-
-selectKerfMode.addEventListener('change', (e) => {
-  state.kerfMode = e.target.value;
-  syncKerfDisplay();
-  rebuildSceneAndSheet();
-});
-
-selectFitComp.addEventListener('change', (e) => {
-  state.fitCompMode = e.target.value;
-  syncKerfDisplay();
-  rebuildSceneAndSheet();
+document.querySelectorAll('#bitFixedButtons [data-bit]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    state.kerfWidth = parseFloat(btn.getAttribute('data-bit')) || 6;
+    syncKerfDisplay();
+    rebuildSceneAndSheet();
+  });
 });
 
 btnToggleLayerExt.addEventListener('click', () => {
@@ -3966,161 +3890,15 @@ btnToggleLayerOff.addEventListener('click', () => {
   rebuildSceneAndSheet();
 });
 
-function setArchitecturalCamera(viewMode = '3d') {
-  state.archViewMode = viewMode;
-
-  document.querySelectorAll('[data-arch-mode]').forEach((btn) => {
-    btn.classList.toggle('active', btn.getAttribute('data-arch-mode') === viewMode);
-  });
-
-  if (viewMode === '3d') {
-    if (state.typology === 'curvedWall' || state.typology === 'shelf') {
-      camera.position.set(1650, 1250, 2000);
-      controls.target.set(0, 720, 0);
-    } else {
-      camera.position.set(1450, 1050, 1650);
-      controls.target.set(0, 320, 0);
-    }
-    controls.update();
-  }
-  renderLiveArchitecturalPlanOverlay();
-  updatePieceHUD();
-}
-
-function renderLiveArchitecturalPlanOverlay() {
-  const overlay = document.getElementById('archPlanOverlay');
-  const pin3D = document.getElementById('pin3D');
-  const badge = document.getElementById('rightVpBadge');
-  const title = document.getElementById('rightVpTitle');
-  if (!overlay || !currentPiecesData.length || !currentSummaryDims) return;
-
-  const mode = state.archViewMode || '3d';
-  if (mode === '3d') {
-    overlay.hidden = true;
-    if (badge) badge.textContent = '3D ASSEMBLY // 100% POST-KERF TIGHTENED FIT';
-    if (title) title.textContent = 'Assembled 3D View (Or switch tabs above for Dimensioned 2D Plans & Multi-Sections)';
-    return;
-  }
-
-  overlay.hidden = false;
-  if (pin3D) pin3D.hidden = true;
-
-  const T = state.thickness;
-  const boxes3D = computePiece3DBoundingBoxes(currentPiecesData, T);
-  const levels = getTypologyPlanSectionLevels(state.typology, currentSummaryDims);
-
-  let html = '';
-  if (mode === 'multi') {
-    if (badge) badge.textContent = '2D ARCHITECTURAL QUAD // PLANTA SUPERIOR + SECCIÓN PLANTA A-A + SECCIÓN D-D + SECCIÓN E-E';
-    if (title) title.textContent = `4 Simultaneous Dimensioned Projections (Click any card to expand or click any part # to inspect)`;
-
-    const svgTop = buildHorizontalPlanOrSectionSvg(boxes3D, currentSummaryDims, 'top', currentSummaryDims.height + 50, 'liveHatchTop');
-    const svgSecA = buildHorizontalPlanOrSectionSvg(boxes3D, currentSummaryDims, 'secA', levels.yA, 'liveHatchSecA');
-    const svgFront = buildVerticalSectionSvg(boxes3D, currentSummaryDims, 'front_DD', levels, 'liveHatchDD');
-    const svgSide = buildVerticalSectionSvg(boxes3D, currentSummaryDims, 'side_EE', levels, 'liveHatchEE');
-
-    html = `
-      <div class="arch-live-quad">
-        <div class="arch-live-quad-cell" data-expand-mode="top" title="Click to expand Top Plan">
-          <div class="arch-plan-cell-head">
-            <span class="arch-plan-badge">01 // PLANTA SUPERIOR ACOTADA (TOP)</span>
-            <span class="arch-plan-cut-tag">W ${currentSummaryDims.width} × D ${currentSummaryDims.depth} MM</span>
-          </div>
-          ${svgTop}
-        </div>
-        <div class="arch-live-quad-cell" data-expand-mode="secA" title="Click to expand Horizontal Plan Section A-A">
-          <div class="arch-plan-cell-head">
-            <span class="arch-plan-badge">02 // SECCIÓN EN PLANTA A-A</span>
-            <span class="arch-plan-cut-tag">CUT Y = +${levels.yA} MM</span>
-          </div>
-          ${svgSecA}
-        </div>
-        <div class="arch-live-quad-cell" data-expand-mode="front_DD" title="Click to expand Longitudinal Section D-D">
-          <div class="arch-plan-cell-head">
-            <span class="arch-plan-badge">03 // SECCIÓN LONGITUDINAL D-D (XY)</span>
-            <span class="arch-plan-cut-tag">W ${currentSummaryDims.width} × H ${currentSummaryDims.height} MM</span>
-          </div>
-          ${svgFront}
-        </div>
-        <div class="arch-live-quad-cell" data-expand-mode="side_EE" title="Click to expand Cross-Section E-E">
-          <div class="arch-plan-cell-head">
-            <span class="arch-plan-badge">04 // SECCIÓN TRANSVERSAL E-E (ZY)</span>
-            <span class="arch-plan-cut-tag">D ${currentSummaryDims.depth} × H ${currentSummaryDims.height} MM</span>
-          </div>
-          ${svgSide}
-        </div>
-      </div>
-    `;
+function setArchitecturalCamera() {
+  if (state.typology === 'curvedWall' || state.typology === 'shelf') {
+    camera.position.set(1650, 1250, 2000);
+    controls.target.set(0, 720, 0);
   } else {
-    let viewLabel = '';
-    let cutTag = '';
-    let subNote = '';
-    let svgContent = '';
-
-    if (mode === 'top') {
-      viewLabel = 'PLANTA SUPERIOR ACOTADA (TOP ROOF PLAN — XZ PLANE)';
-      cutTag = `VIEW FROM +Y · W ${currentSummaryDims.width} × D ${currentSummaryDims.depth} MM`;
-      subNote = 'Full top projection with overall millimeter dimensions and vertical section cut axes D-D and E-E.';
-      svgContent = buildHorizontalPlanOrSectionSvg(boxes3D, currentSummaryDims, 'top', currentSummaryDims.height + 50, 'liveSingleTop');
-    } else if (mode === 'secA') {
-      viewLabel = levels.labelA;
-      cutTag = `HORIZONTAL CUT AT Y = +${levels.yA} MM`;
-      subNote = levels.subA;
-      svgContent = buildHorizontalPlanOrSectionSvg(boxes3D, currentSummaryDims, 'secA', levels.yA, 'liveSingleSecA');
-    } else if (mode === 'secB') {
-      viewLabel = levels.labelB;
-      cutTag = `HORIZONTAL CUT AT Y = +${levels.yB} MM`;
-      subNote = levels.subB;
-      svgContent = buildHorizontalPlanOrSectionSvg(boxes3D, currentSummaryDims, 'secB', levels.yB, 'liveSingleSecB');
-    } else if (mode === 'secC') {
-      viewLabel = levels.labelC;
-      cutTag = `HORIZONTAL CUT AT Y = +${levels.yC} MM`;
-      subNote = levels.subC;
-      svgContent = buildHorizontalPlanOrSectionSvg(boxes3D, currentSummaryDims, 'secC', levels.yC, 'liveSingleSecC');
-    } else if (mode === 'front_DD') {
-      viewLabel = 'SECCIÓN LONGITUDINAL / ALZADO FRONTAL D-D (XY PLANE)';
-      cutTag = `W ${currentSummaryDims.width} × H ${currentSummaryDims.height} MM · T = ${T} MM`;
-      subNote = 'Vertical longitudinal section showing horizontal plan section datums A-A, B-B, C-C and internal bay clearances.';
-      svgContent = buildVerticalSectionSvg(boxes3D, currentSummaryDims, 'front_DD', levels, 'liveSingleDD');
-    } else {
-      viewLabel = 'SECCIÓN TRANSVERSAL LATERAL E-E (ZY PLANE AT X = 0)';
-      cutTag = `D ${currentSummaryDims.depth} × H ${currentSummaryDims.height} MM · T = ${T} MM`;
-      subNote = 'Front-to-back vertical cross-section slicing through X = 0 (45° hatch = sectioned timber thickness T).';
-      svgContent = buildVerticalSectionSvg(boxes3D, currentSummaryDims, 'side_EE', levels, 'liveSingleEE');
-    }
-
-    if (badge) badge.textContent = `2D ARCHITECTURAL PROJECTION // ${viewLabel}`;
-    if (title) title.textContent = subNote;
-
-    html = `
-      <div class="arch-live-single">
-        <div class="arch-plan-cell-head">
-          <span class="arch-plan-badge">${viewLabel}</span>
-          <span class="arch-plan-cut-tag">${cutTag}</span>
-        </div>
-        ${svgContent}
-      </div>
-    `;
+    camera.position.set(1450, 1050, 1650);
+    controls.target.set(0, 320, 0);
   }
-
-  overlay.innerHTML = html;
-
-  // Bind click on any piece inside the 2D Architectural Plan/Section SVG to select it across the whole app!
-  overlay.querySelectorAll('.arch-svg-piece').forEach((el) => {
-    el.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const pid = el.getAttribute('data-piece-id');
-      if (pid) selectPiece(pid);
-    });
-  });
-
-  // In 4-Plan Quad mode, clicking a quadrant card header expands that plan/section
-  overlay.querySelectorAll('.arch-live-quad-cell').forEach((cell) => {
-    cell.addEventListener('click', () => {
-      const targetMode = cell.getAttribute('data-expand-mode');
-      if (targetMode) setArchitecturalCamera(targetMode);
-    });
-  });
+  controls.update();
 }
 
 document.querySelectorAll('.type-btn').forEach((btn) => {
@@ -4134,13 +3912,8 @@ document.querySelectorAll('.type-btn').forEach((btn) => {
 
     buildDynamicSlidersUI();
     rebuildSceneAndSheet();
-    setArchitecturalCamera(state.archViewMode || '3d');
+    setArchitecturalCamera();
   });
-});
-
-document.getElementById('selectMaterial').addEventListener('change', (e) => {
-  state.materialMode = e.target.value;
-  rebuildSceneAndSheet();
 });
 
 document.getElementById('btnResetParams').addEventListener('click', () => {
@@ -4153,16 +3926,9 @@ document.getElementById('btnResetParams').addEventListener('click', () => {
   rebuildSceneAndSheet();
 });
 
-document.querySelectorAll('[data-arch-mode]').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    const mode = btn.getAttribute('data-arch-mode');
-    if (mode) setArchitecturalCamera(mode);
-  });
-});
-
-const btnCamOpenBlueprint = document.getElementById('btnCamOpenBlueprint');
-if (btnCamOpenBlueprint) {
-  btnCamOpenBlueprint.addEventListener('click', () => openShopDrawingModal());
+const btnResetCam = document.getElementById('btnResetCamera');
+if (btnResetCam) {
+  btnResetCam.addEventListener('click', () => setArchitecturalCamera());
 }
 
 // ============================================================================
@@ -4207,18 +3973,8 @@ function loadStateFromURL() {
     document.getElementById('valThickness').textContent = `${th} mm`;
   }
   const kf = parseFloat(params.get('kerf'));
-  if (!Number.isNaN(kf) && kf >= 0 && kf <= 12) {
-    state.kerfWidth = kf;
-  }
-  const km = params.get('kmode');
-  if (km && ['shared', 'all_half', 'full_kerf'].includes(km)) {
-    state.kerfMode = km;
-    if (selectKerfMode) selectKerfMode.value = km;
-  }
-  const fc = params.get('fcomp');
-  if (fc && ['auto_tighten', 'expand_nominal'].includes(fc)) {
-    state.fitCompMode = fc;
-    if (selectFitComp) selectFitComp.value = fc;
+  if (!Number.isNaN(kf) && [6, 10, 12].includes(Math.round(kf))) {
+    state.kerfWidth = Math.round(kf);
   }
   syncKerfDisplay();
 
@@ -4270,14 +4026,26 @@ document.getElementById('btnCloseToast').addEventListener('click', () => {
 const shopDrawingModal = document.getElementById('shopDrawingModal');
 const shopDrawingSheet = document.getElementById('shopDrawingSheet');
 
+function getOrthonormalPieceBasis(piece) {
+  const uRaw = piece.assembled.uAxis || piece.assembled.u || [1, 0, 0];
+  const vRaw = piece.assembled.vAxis || piece.assembled.v || [0, 1, 0];
+  const uVec = new THREE.Vector3(...uRaw).normalize();
+  const vVec = new THREE.Vector3(...vRaw).normalize();
+  vVec.sub(uVec.clone().multiplyScalar(uVec.dot(vVec))).normalize();
+  const wVec = new THREE.Vector3().crossVectors(uVec, vVec).normalize();
+  return {
+    u: [uVec.x, uVec.y, uVec.z],
+    v: [vVec.x, vVec.y, vVec.z],
+    w: [wVec.x, wVec.y, wVec.z]
+  };
+}
+
 function computePiece3DBoundingBoxes(pieces, T) {
   return pieces.map((p, idx) => {
     const pts = p.offsetPoints2D || p.points2D;
     const [cx, cy] = p.compensatedPivot2D || p.assembled.pivot2D;
 
-    const u = p.assembled.u;
-    const v = p.assembled.v;
-    const w = p.assembled.w;
+    const { u, v, w } = getOrthonormalPieceBasis(p);
     const pos = p.compensatedPos3D || p.assembled.pos3D;
     const halfT = T / 2;
 
@@ -4319,6 +4087,9 @@ function computePiece3DBoundingBoxes(pieces, T) {
       idx,
       numStr: String(idx + 1).padStart(2, '0'),
       piece: p,
+      u,
+      v,
+      w,
       minX,
       maxX,
       minY,
@@ -4693,8 +4464,8 @@ function buildVerticalSectionSvg(boxes3D, summaryDims, planeMode, levels, patter
 
     const isObliqueSide =
       !isFront &&
-      Math.abs(b.piece.assembled.w[1]) > 0.15 &&
-      Math.abs(b.piece.assembled.w[2]) > 0.15;
+      Math.abs(b.w[1]) > 0.15 &&
+      Math.abs(b.w[2]) > 0.15;
 
     s += `<g class="arch-svg-piece" data-piece-id="${b.piece.id}" style="cursor:pointer;">`;
     if (isObliqueSide) {
@@ -5206,67 +4977,8 @@ document.getElementById('btnDownloadShopHTML').addEventListener('click', () => {
 });
 
 // ============================================================================
-// MULTI-LAYER 1:1 MILLIMETER CNC SVG & DXF EXPORTERS
+// MULTI-LAYER 1:1 MILLIMETER CNC DXF EXPORTER
 // ============================================================================
-document.getElementById('btnExportSVG').addEventListener('click', () => {
-  const L = state.sheetL;
-  const W = state.sheetW;
-  const pieces = currentPiecesData;
-  const cnc = currentCncAnalysis || buildCncFabricationAnalysis(pieces, L, W, state.kerfWidth, state.kerfMode);
-  const relOffset = state.kerfMode === 'full_kerf' ? state.kerfWidth : state.kerfWidth / 2;
-
-  let svgOut = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-  svgOut += `<!-- WOOD-X CNC & SAW MULTI-LAYER CUTTING FILE | Kerf K=${state.kerfWidth.toFixed(2)}mm | Relative Part Offset=-${relOffset.toFixed(2)}mm -->\n`;
-  svgOut += `<svg xmlns="http://www.w3.org/2000/svg" width="${L}mm" height="${W}mm" viewBox="${-L / 2} ${-W / 2} ${L} ${W}">\n`;
-
-  svgOut += `  <g id="00_STOCK_BOARD" stroke="#808080" stroke-width="1" fill="none">\n`;
-  svgOut += `    <rect x="${-L / 2}" y="${-W / 2}" width="${L}" height="${W}" />\n`;
-  svgOut += `  </g>\n`;
-
-  svgOut += `  <g id="01_CUT_INTERIOR_SHARED" stroke="#C83228" stroke-width="1.2" fill="none">\n`;
-  cnc.interiorSharedPolylines.forEach((chain, idx) => {
-    svgOut += `    <path id="shared_cut_${idx + 1}" d="${openPolylineToSvgPath(chain)}" />\n`;
-  });
-  svgOut += `  </g>\n`;
-
-  svgOut += `  <g id="02_CUT_INTERIOR_HOLES" stroke="#008844" stroke-width="1.2" fill="none">\n`;
-  cnc.interiorHoleLoops.forEach((h, idx) => {
-    svgOut += `    <path id="hole_cut_${idx + 1}_${h.pieceId}" d="${pointsToSvgPath(h.pts, null)}" />\n`;
-  });
-  svgOut += `  </g>\n`;
-
-  svgOut += `  <g id="03_CUT_EXTERIOR_PERIMETER" stroke="#1B4D89" stroke-width="1.4" fill="none">\n`;
-  cnc.exteriorPolylines.forEach((chain, idx) => {
-    svgOut += `    <path id="exterior_cut_${idx + 1}" d="${openPolylineToSvgPath(chain)}" />\n`;
-  });
-  svgOut += `  </g>\n`;
-
-  svgOut += `  <g id="04_PART_OFFSET_CONTOURS" stroke="#1E6B45" stroke-width="0.9" stroke-dasharray="4,2" fill="none">\n`;
-  pieces.forEach((p) => {
-    const pathD = pointsToSvgPath(p.offsetPoints2D || p.points2D, p.offsetHoles2D || p.holes2D);
-    svgOut += `    <path id="offset_${p.id}" d="${pathD}" />\n`;
-  });
-  svgOut += `  </g>\n`;
-
-  svgOut += `  <g id="05_PART_LABELS" fill="#141414" font-family="monospace" font-size="14" text-anchor="middle">\n`;
-  pieces.forEach((p, idx) => {
-    const cx = p.points2D.reduce((s, pt) => s + pt[0], 0) / p.points2D.length;
-    const cy = -p.points2D.reduce((s, pt) => s + pt[1], 0) / p.points2D.length;
-    const [offW, offH] = p.offsetBox || [0, 0];
-    const numStr = String(idx + 1).padStart(2, '0');
-    svgOut += `    <text x="${cx.toFixed(1)}" y="${cy.toFixed(1)}">#${numStr} ${p.name} (${offW.toFixed(1)}x${offH.toFixed(1)}mm)</text>\n`;
-  });
-  svgOut += `  </g>\n`;
-
-  svgOut += `</svg>`;
-
-  downloadBlob(
-    svgOut,
-    `wood-x-${state.typology}-${L}x${W}mm-kerf${state.kerfWidth.toFixed(1)}mm-layers.svg`,
-    'image/svg+xml'
-  );
-});
-
 function generateCurrentDxfContentAndFilename() {
   const L = state.sheetL;
   const W = state.sheetW;
@@ -5478,11 +5190,12 @@ function buildFactoryExecutionDossier() {
 
   const subject = `[WOOD-X -> HERO FACTORY] CNC Order: ${cfg.title} (${qty}x) — Board ${L}x${W}x${T}mm`;
 
+  // Full technical dossier (for textarea preview, clipboard, and direct HTTP POST email):
   const body = `HERO FACTORY — WOOD-X CNC & ARCHITECTURAL EXECUTION ORDER
 ====================================================================
 1. DIRECT INTERACTIVE BLUEPRINT, 2D PLANS/SECTIONS & DXF LINK:
 ${shareBlueprintUrl}
-(Click the link above to open the exact 1:1 Shop Drawing, 4 Horizontal Plans, 2 Vertical Sections, and export the CNC DXF / PDF directly in the browser)
+(Open the link above to view the exact 1:1 Shop Drawing, 4 Horizontal Plans, 2 Vertical Sections, and export the CNC DXF / PDF directly)
 
 2. CLIENT & ORDER DETAILS:
 - Client / Project: ${clientName}
@@ -5498,31 +5211,52 @@ ${shareBlueprintUrl}
 - Total Standard 122×244 cm Boards Required (for ${qty}x): ${bInfo.totalStdSheets} board(s) (${bInfo.totalAreaM2} m² total · ~${bInfo.approxWeightKg} kg)
 
 4. ASSEMBLED FURNITURE EXECUTION DIMENSIONS (COTAS FINALES DE MONTAJE):
-- Total Width (Ancho X): ${dims.width} mm
-- Total Depth (Fondo Z): ${dims.depth} mm
-- Total Height (Alto Y): ${dims.height} mm
+- Total Width (Ancho W): ${dims.width} mm
+- Total Depth (Fondo D): ${dims.depth} mm
+- Total Height (Alto H): ${dims.height} mm
 - ${cfg.primaryMetricLabel}: ${dims.primaryHeight}
 
-5. CNC / SAW KERF & TOOLPATH PARAMETERS:
-- Tool Diameter / Saw Kerf (K): ${K.toFixed(1)} mm
-- Relative Part Edge Offset: -${relOffset.toFixed(2)} mm per cut side
-- 3D Assembly Fit Mode: ${state.fitCompMode === 'expand_nominal' ? 'Pre-Expanded (+K Allowance)' : 'Post-Kerf Auto-Tightened 3D Joints (±0.5mm tolerance)'}
-- Shared Interior Cut Length (Layer 01): ${(cnc.deduplicatedInteriorLen / 1000).toFixed(2)} m (Saves ${(cnc.sharedPassSavedLen / 1000).toFixed(2)} m)
-- Exterior Perimeter Cut Length (Layer 03): ${(cnc.exteriorCutLen / 1000).toFixed(2)} m
+5. CNC BIT OFFSET & EXECUTION PARAMETERS:
+- Fixed Bit Diameter (K): ${K.toFixed(0)} mm (Relative Part Edge Offset: -${relOffset.toFixed(1)} mm/side)
+- 3D Assembly Fit: Post-Offset Auto-Tightened 3D Joints (±0.5mm tolerance)
 
-6. POST-KERF COMPONENT CUT LIST (${pieces.length} PARTS PER UNIT):
+6. POST-OFFSET COMPONENT CUT LIST (${pieces.length} PARTS PER UNIT):
 ${cutListLines}
 
-7. ATTACHED CNC & ARCHITECTURAL FILES:
+7. CNC & ARCHITECTURAL FILES:
 - 1:1 Multi-Layer CNC DXF: ${dxfFilename}
 - Architectural Plans & Multi-Sections Blueprint (PDF/HTML): ${htmlPlanFilename}
 ====================================================================`;
+
+  // Compact body (<1300 chars) guaranteed never to fail in Windows/macOS mailto: or Gmail URL handlers:
+  const compactMailBody = `HERO FACTORY — WOOD-X EXECUTION ORDER
+--------------------------------------------------
+1. DIRECT 1:1 PLANS, SECTIONS & DXF LINK:
+${shareBlueprintUrl}
+
+2. CLIENT & ORDER:
+- Client: ${clientName} (${clientEmail})
+- Quantity: ${qty} unit(s) | Notes: ${deliveryNotes}
+
+3. REQUIRED MATERIAL FOR EXECUTION:
+- Model: ${cfg.title}
+- Stock Board per Unit: ${L} x ${W} x ${T} mm (${bInfo.sheetTypeDesc})
+- Total 122x244 cm Boards (for ${qty}x): ${bInfo.totalStdSheets} board(s) (${bInfo.totalAreaM2} m2 · ~${bInfo.approxWeightKg} kg)
+- Bit Diameter: ${K.toFixed(0)} mm (Relative Offset -${relOffset.toFixed(1)} mm/edge)
+
+4. ASSEMBLED EXECUTION DIMENSIONS:
+- Width (W): ${dims.width} mm | Depth (D): ${dims.depth} mm | Height (H): ${dims.height} mm
+
+5. ATTACHED FILES (Auto-downloaded to your computer):
+- ${dxfFilename} (1:1 CNC DXF)
+- ${htmlPlanFilename} (Architectural Plans & Sections PDF/HTML)
+(Full ${pieces.length}-part cut list is also copied to your clipboard and embedded in the link above)`;
 
   if (textareaFactoryDossier) {
     textareaFactoryDossier.value = body;
   }
 
-  return { factoryEmail, subject, body, dxfFilename, htmlPlanFilename };
+  return { factoryEmail, clientName, clientEmail, qty, cfg, L, W, T, K, bInfo, dims, shareBlueprintUrl, subject, body, compactMailBody, dxfFilename, htmlPlanFilename };
 }
 
 function openFactoryModal() {
@@ -5584,9 +5318,76 @@ document.getElementById('btnFactoryCopySpec').addEventListener('click', () => {
   }
 });
 
+// Direct HTTP Email Dispatch via FormSubmit AJAX + Automatic DXF & Blueprint Download + Mailto Fallback:
+const btnFactoryDirectSend = document.getElementById('btnFactoryDirectSend');
+if (btnFactoryDirectSend) {
+  btnFactoryDirectSend.addEventListener('click', async () => {
+    const info = buildFactoryExecutionDossier();
+    // 1. Download DXF & HTML Blueprint locally so client/factory also has the raw files immediately
+    downloadCurrentDxfFile();
+    setTimeout(() => {
+      downloadShopDrawingHtmlFile();
+    }, 250);
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(info.body).catch(() => {});
+    }
+
+    if (factoryStatusBanner) {
+      factoryStatusBanner.hidden = false;
+      factoryStatusBanner.innerHTML = `<strong>Sending Execution Order directly to ${info.factoryEmail}...</strong> (Also downloaded <code>${info.dxfFilename}</code> &amp; <code>${info.htmlPlanFilename}</code>)`;
+    }
+
+    try {
+      const resp = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(info.factoryEmail)}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json'
+        },
+        body: JSON.stringify({
+          _subject: info.subject,
+          _template: 'box',
+          client_project: info.clientName,
+          client_email: info.clientEmail,
+          quantity: `${info.qty} unit(s)`,
+          furniture_model: info.cfg.title,
+          required_stock_boards: `${info.bInfo.totalStdSheets}x Std 122x244cm (${info.L}x${info.W}x${info.T} mm · ${info.bInfo.totalAreaM2} m² · ~${info.bInfo.approxWeightKg} kg)`,
+          assembled_dimensions: `W ${info.dims.width} x D ${info.dims.depth} x H ${info.dims.height} mm`,
+          cnc_bit_offset: `Bit Ø ${info.K} mm (Relative Offset -${(info.K / 2).toFixed(1)} mm/edge)`,
+          direct_blueprint_and_dxf_link: info.shareBlueprintUrl,
+          execution_dossier: info.body
+        })
+      });
+
+      if (resp.ok) {
+        if (factoryStatusBanner) {
+          factoryStatusBanner.innerHTML = `
+            <strong>Order Sent Directly to ${info.factoryEmail}!</strong><br/>
+            The full Material Specification, Cut List, and Direct 1:1 DXF/Plans Link have been dispatched, and <code>${info.dxfFilename}</code> + <code>${info.htmlPlanFilename}</code> were downloaded to your computer.
+          `;
+        }
+        return;
+      }
+    } catch (_) {
+      // Fallback to mailto below if offline or blocked
+    }
+
+    // Fallback: open default email client with compact body that never exceeds URL length limits
+    const mailtoUrl = `mailto:${encodeURIComponent(info.factoryEmail)}?subject=${encodeURIComponent(info.subject)}&body=${encodeURIComponent(info.compactMailBody)}`;
+    window.location.href = mailtoUrl;
+
+    if (factoryStatusBanner) {
+      factoryStatusBanner.innerHTML = `
+        <strong>Email Client Opened for ${info.factoryEmail}!</strong><br/>
+        Downloaded <code>${info.dxfFilename}</code> (DXF) &amp; <code>${info.htmlPlanFilename}</code> (Plans). Attach both files to the email window and press Send!
+      `;
+    }
+  });
+}
+
 document.getElementById('btnFactorySendMailto').addEventListener('click', () => {
-  const { factoryEmail, subject, body, dxfFilename, htmlPlanFilename } = buildFactoryExecutionDossier();
-  // Auto-download both the 1:1 CNC DXF and the Standalone Architectural Blueprint HTML so the user has both files ready to drop into the email!
+  const { factoryEmail, subject, body, compactMailBody, dxfFilename, htmlPlanFilename } = buildFactoryExecutionDossier();
   downloadCurrentDxfFile();
   setTimeout(() => {
     downloadShopDrawingHtmlFile();
@@ -5596,27 +5397,31 @@ document.getElementById('btnFactorySendMailto').addEventListener('click', () => 
     navigator.clipboard.writeText(body).catch(() => {});
   }
 
-  const mailtoUrl = `mailto:${encodeURIComponent(factoryEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  window.location.href = mailtoUrl;
+  const mailtoUrl = `mailto:${encodeURIComponent(factoryEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(compactMailBody)}`;
+  const mailLink = document.createElement('a');
+  mailLink.href = mailtoUrl;
+  document.body.appendChild(mailLink);
+  mailLink.click();
+  document.body.removeChild(mailLink);
 
   if (factoryStatusBanner) {
     factoryStatusBanner.hidden = false;
     factoryStatusBanner.innerHTML = `
-      <strong>Order Packaged for ${factoryEmail}!</strong><br/>
-      1. Downloaded <code>${dxfFilename}</code> (1:1 CNC DXF) &amp; <code>${htmlPlanFilename}</code> (Architectural Plans/PDF).<br/>
-      2. Opened your email client pre-filled with the Material Required, Execution Dimensions &amp; Direct Blueprint Link. Attach the two downloaded files and hit Send!
+      <strong>Email App Opened for ${factoryEmail}!</strong><br/>
+      1. Downloaded <code>${dxfFilename}</code> (1:1 DXF) &amp; <code>${htmlPlanFilename}</code> (Architectural Plans/PDF).<br/>
+      2. Full execution dossier is also copied to your clipboard. Attach the two downloaded files and hit Send!
     `;
   }
 });
 
 document.getElementById('btnFactorySendGmail').addEventListener('click', () => {
-  const { factoryEmail, subject, body, dxfFilename, htmlPlanFilename } = buildFactoryExecutionDossier();
+  const { factoryEmail, subject, compactMailBody, dxfFilename, htmlPlanFilename } = buildFactoryExecutionDossier();
   downloadCurrentDxfFile();
   setTimeout(() => {
     downloadShopDrawingHtmlFile();
   }, 250);
 
-  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(factoryEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(factoryEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(compactMailBody)}`;
   window.open(gmailUrl, '_blank', 'noopener');
 
   if (factoryStatusBanner) {

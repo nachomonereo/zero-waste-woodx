@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=13" />
+  <link rel="stylesheet" href="styles.css?v=14" />
   <script type="importmap">
     {
       "imports": {
@@ -89,10 +89,10 @@
 
     <div class="header-actions">
       <div class="metric-cell">
-        <span class="label-caps">NET WOOD / KERF</span>
+        <span class="label-caps">BOARD YIELD</span>
         <span class="metric-value" id="utilizationValue">100.0%</span>
       </div>
-      <button class="btn-secondary" id="btnOpenShopDrawing" title="Open Dimensioned Shop Drawing Plans & Export PDF">
+      <button class="btn-secondary" id="btnOpenShopDrawing" title="Open Architectural Plans, Sections & Export PDF">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         <span>SHOP DRAWINGS / PDF</span>
       </button>
@@ -100,15 +100,11 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
         <span>SHARE LINK</span>
       </button>
-      <button class="btn-secondary" id="btnExportSVG" title="Export 1:1 Layered CNC SVG (Exterior, Shared Interior, Part Offsets)">
+      <button class="btn-secondary" id="btnExportDXF" title="Export 1:1 Multi-Layer DXF for CNC Execution">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        <span>SVG LAYERS</span>
+        <span>EXPORT DXF</span>
       </button>
-      <button class="btn-secondary" id="btnExportDXF" title="Export 1:1 Multi-Layer DXF for CNC Router (Exterior Cut, Interior Shared Cut, Part Offsets)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        <span>DXF CNC</span>
-      </button>
-      <button class="btn-factory" id="btnOpenFactoryModal" title="Send CNC DXF, Architectural PDF Plans & Material Execution Spec to HERO Factory">
+      <button class="btn-factory" id="btnOpenFactoryModal" title="Send DXF, PDF Plans & Execution Dimensions to HERO Factory">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         <span>SEND TO FACTORY</span>
       </button>
@@ -117,100 +113,21 @@
 
   <!-- MAIN SWISS GRID WORKSPACE -->
   <main class="workspace">
-    <!-- LEFT SIDEBAR -->
+    <!-- LEFT SIDEBAR (SIMPLIFIED: 01 DESIGN -> 02 DIMENSIONS -> 00 BOARD & BIT OFFSET -> SEND TO FACTORY) -->
     <aside class="sidebar">
-      <!-- 00: REQUIRED STOCK BOARD & CNC / SAW KERF OFFSET -->
-      <div class="panel-section stock-board-block">
-        <div class="section-header">
-          <h2>00 / Stock Board &amp; CNC Kerf Offset</h2>
-          <span class="mono-tag" id="sheetAreaTag">2.98 m²</span>
-        </div>
-        <div class="board-live-box">
-          <div class="board-dim-main" id="liveBoardSize">2440 × 1220 mm</div>
-          <div class="board-dim-sub" id="liveKerfSummary">Shared Cut Line Mode · Relative Offset: -1.60 mm per part</div>
-        </div>
-        <div class="control-group" style="margin-top: 10px;">
-          <div class="control-label">
-            <label for="sliderThickness">Board Thickness (T)</label>
-            <span class="val-display" id="valThickness">24 mm</span>
-          </div>
-          <input type="range" id="sliderThickness" min="18" max="36" step="3" value="24" />
-        </div>
-
-        <div class="kerf-config-box">
-          <div class="control-group">
-            <div class="control-label">
-              <label for="selectKerfPreset">Cutting Tool (Saw Blade / CNC Bit)</label>
-            </div>
-            <select id="selectKerfPreset" class="styled-select">
-              <option value="3.2" selected>Circular Saw Blade (K = 3.2 mm → -1.6 mm/side)</option>
-              <option value="2.4">Thin-Kerf Circular Saw (K = 2.4 mm → -1.2 mm/side)</option>
-              <option value="4.0">Industrial Panel Saw (K = 4.0 mm → -2.0 mm/side)</option>
-              <option value="6.0">CNC Router End-Mill Ø 6.0 mm (→ -3.0 mm/side)</option>
-              <option value="8.0">CNC Router Compression Ø 8.0 mm (→ -4.0 mm/side)</option>
-              <option value="0">Zero-Kerf Ideal CAD (K = 0.0 mm → 0.0 mm)</option>
-            </select>
-          </div>
-
-          <div class="control-group">
-            <div class="control-label">
-              <label for="sliderKerf">Tool Kerf / Diameter (K)</label>
-              <span class="val-display" id="valKerf">3.2 mm (Offset -1.60 mm)</span>
-            </div>
-            <input type="range" id="sliderKerf" min="0" max="12" step="0.2" value="3.2" />
-          </div>
-
-          <div class="control-group">
-            <div class="control-label">
-              <label for="selectKerfMode">Relative Board Offset Strategy</label>
-            </div>
-            <select id="selectKerfMode" class="styled-select">
-              <option value="shared" selected>Shared Cut Line (Interior -K/2 · Outer 0 mm · Min Waste)</option>
-              <option value="all_half">All Edges Offset (Interior -K/2 · Outer -K/2 Trim)</option>
-              <option value="full_kerf">Independent Contours (Interior -K · Outer -K/2)</option>
-            </select>
-          </div>
-
-          <div class="control-group">
-            <div class="control-label">
-              <label for="selectFitComp">CNC Kerf Assembly Fit Compensation</label>
-            </div>
-            <select id="selectFitComp" class="styled-select">
-              <option value="auto_tighten" selected>Auto-Tighten 3D Assembly &amp; Pre-Compensate Mortises (Std 122×244)</option>
-              <option value="expand_nominal">Pre-Expand Cut Allowance (+K so Parts Keep 100% Nominal Size)</option>
-            </select>
-          </div>
-
-          <div class="cnc-metrics-row">
-            <div class="cnc-metric-pill int-layer">
-              <span class="pill-lbl">INTERIOR SHARED CUT</span>
-              <strong id="valInteriorCutLen">0.00 m</strong>
-            </div>
-            <div class="cnc-metric-pill ext-layer">
-              <span class="pill-lbl">EXTERIOR CUT LAYER</span>
-              <strong id="valExteriorCutLen">0.00 m</strong>
-            </div>
-            <div class="cnc-metric-pill off-layer">
-              <span class="pill-lbl">KERF DUST LOSS</span>
-              <strong id="valKerfLossPct">0.0%</strong>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 01: DESIGN-SPECIFIC SLIDERS (DIFFERENT PER TYPOLOGY) -->
+      <!-- 01: DESIGN-SPECIFIC SLIDERS (MOST RELEVANT SECTION FIRST) -->
       <div class="panel-section">
         <div class="section-header">
           <h2 id="slidersSectionTitle">01 / Design Parameters</h2>
           <button class="reset-link" id="btnResetParams">Reset Default</button>
         </div>
         <p class="helper-note" id="typologyHint">
-          Adjusting any dimension below automatically updates the stock board size and all complementary parts.
+          Adjusting any dimension below automatically updates the board and all complementary parts.
         </p>
         <div id="dynamicSliders"></div>
       </div>
 
-      <!-- 02: FINAL FURNITURE DIMENSIONS -->
+      <!-- 02: SIMPLIFIED ASSEMBLED DIMENSIONS -->
       <div class="panel-section dimensions-block">
         <div class="section-header">
           <h2>02 / Assembled Dimensions</h2>
@@ -218,15 +135,15 @@
         </div>
         <div class="dims-grid">
           <div class="dim-box">
-            <span class="dim-label">WIDTH (X)</span>
+            <span class="dim-label">WIDTH (W)</span>
             <strong class="dim-val" id="finalDimW">708 mm</strong>
           </div>
           <div class="dim-box">
-            <span class="dim-label">DEPTH (Z)</span>
+            <span class="dim-label">DEPTH (D)</span>
             <strong class="dim-val" id="finalDimD">600 mm</strong>
           </div>
           <div class="dim-box">
-            <span class="dim-label">HEIGHT (Y)</span>
+            <span class="dim-label">HEIGHT (H)</span>
             <strong class="dim-val" id="finalDimH">776 mm</strong>
           </div>
           <div class="dim-box highlight">
@@ -236,71 +153,51 @@
         </div>
       </div>
 
-      <!-- 03: SURFACE FINISH & ARCHITECTURAL PROJECTIONS -->
-      <div class="panel-section">
+      <!-- 00: MINIMAL BOARD & FIXED BIT OFFSET (6 / 10 / 12 MM ONLY) -->
+      <div class="panel-section stock-board-block">
         <div class="section-header">
-          <h2>03 / Finish &amp; Architectural Views</h2>
+          <h2>00 / Stock Board &amp; Bit Offset</h2>
+          <span class="mono-tag" id="sheetAreaTag">2.98 m²</span>
+        </div>
+        <div class="board-live-box">
+          <div class="board-dim-main" id="liveBoardSize">2440 × 1220 mm</div>
+          <div class="board-dim-sub" id="liveKerfSummary">Bit Ø 6 mm · Relative Part Offset: -3.0 mm/edge</div>
         </div>
 
-        <div class="control-group">
+        <div class="control-group" style="margin-top: 10px;">
           <div class="control-label">
-            <label for="selectMaterial">Wood / Surface Finish</label>
+            <label for="sliderThickness">Board Thickness (T)</label>
+            <span class="val-display" id="valThickness">24 mm</span>
           </div>
-          <select id="selectMaterial" class="styled-select">
-            <option value="butcher" selected>Multi-Strip Laminated Wood (Reference)</option>
-            <option value="birch">Natural Birch Plywood</option>
-            <option value="charcoal">Anthracite Grey (Ref. Stool / Chair)</option>
-            <option value="forest">Architectural Forest Green (Ref. Sofa)</option>
-            <option value="walnut">Dark Espresso Walnut</option>
-          </select>
+          <input type="range" id="sliderThickness" min="18" max="36" step="3" value="24" />
         </div>
 
-        <div class="control-group" style="margin-top:10px;">
+        <div class="control-group" style="margin-top: 10px;">
           <div class="control-label">
-            <label>Live Architectural Plan, Sections &amp; 3D</label>
+            <label>Fixed Tool Bit / Offset (6 · 10 · 12 mm)</label>
+            <span class="val-display" id="valKerf">6 mm (-3.0 mm/edge)</span>
           </div>
-          <div class="mini-btns" style="grid-template-columns: repeat(3, 1fr);">
-            <button type="button" class="mini-btn" id="btnCamIso" data-arch-mode="3d">3D Iso</button>
-            <button type="button" class="mini-btn" id="btnCamMulti" data-arch-mode="multi">4-Plan Quad</button>
-            <button type="button" class="mini-btn" id="btnCamTop" data-arch-mode="top">Planta</button>
-            <button type="button" class="mini-btn" id="btnCamSecA" data-arch-mode="secA">Planta A-A</button>
-            <button type="button" class="mini-btn" id="btnCamSecB" data-arch-mode="secB">Planta B-B</button>
-            <button type="button" class="mini-btn" id="btnCamSecC" data-arch-mode="secC">Planta C-C</button>
-            <button type="button" class="mini-btn" id="btnCamFront" data-arch-mode="front_DD">Sección D-D</button>
-            <button type="button" class="mini-btn" id="btnCamSide" data-arch-mode="side_EE">Sección E-E</button>
-            <button type="button" class="mini-btn" id="btnCamOpenBlueprint">Full Plan</button>
+          <div class="mini-btns" id="bitFixedButtons" style="grid-template-columns: repeat(3, 1fr);">
+            <button type="button" class="mini-btn active" data-bit="6">6 mm (-3mm)</button>
+            <button type="button" class="mini-btn" data-bit="10">10 mm (-5mm)</button>
+            <button type="button" class="mini-btn" data-bit="12">12 mm (-6mm)</button>
           </div>
         </div>
       </div>
 
-      <!-- 04: COMPONENT LIST -->
-      <div class="panel-section inspector-section">
-        <div class="section-header">
-          <h2>04 / Component List (Click to Locate)</h2>
-          <span class="mono-tag" id="pieceCountTag">6 PARTS</span>
-        </div>
-        <div id="selectedPieceBanner" class="selected-banner">
-          Click any part in <strong>3D</strong> or on the <strong>2D Board</strong> to point out its exact location in both views.
-        </div>
-        <div class="piece-list" id="pieceList"></div>
-      </div>
-
-      <!-- 05: SEND TO HERO FACTORY (EXECUTION ORDER & MATERIAL SPEC) -->
+      <!-- SEND TO HERO FACTORY (EXECUTION ORDER & MATERIAL SPEC) -->
       <div class="panel-section factory-sidebar-block">
         <div class="section-header">
-          <h2>05 / Send to Factory (HERO)</h2>
-          <span class="mono-tag factory-tag">CNC READY</span>
+          <h2>Send to Factory (HERO)</h2>
+          <span class="mono-tag factory-tag">ORDER</span>
         </div>
-        <p class="helper-note">
-          Ready to manufacture? Send the 1:1 multi-layer <strong>DXF</strong>, architectural <strong>PDF / Plan</strong>, and full <strong>Material &amp; Execution Dimensions</strong> directly to <strong>HERO Factory</strong>.
-        </p>
         <div class="factory-quick-spec" id="sidebarFactorySpec">
-          <span>MATERIAL: <strong>1× STD BOARD 2440×1220×24 MM</strong></span>
-          <span>RECIPIENT: <strong>nacho.monereo@iaac.net</strong></span>
+          <span>BOARD: <strong>2440×1220×24 MM</strong></span>
+          <span>FACTORY: <strong>nacho.monereo@iaac.net</strong></span>
         </div>
         <button type="button" class="btn-factory-full" id="btnSidebarSendFactory">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-          <span>SEND PLANS &amp; DXF TO HERO FACTORY</span>
+          <span>SEND PLANS &amp; DXF TO HERO</span>
         </button>
       </div>
     </aside>
@@ -311,18 +208,18 @@
       <div class="viewport-card" id="card2D">
         <div class="viewport-header">
           <div>
-            <span class="vp-badge">2D CNC &amp; SAW CUTTING PLAN // SHARED CUT LINES + RELATIVE OFFSETS</span>
-            <h3 id="header2DTitle">Stock Board: 2440 × 1220 mm (Click any piece to locate in 3D)</h3>
+            <span class="vp-badge">2D BOARD CUTTING LAYOUT // RELATIVE PART OFFSETS</span>
+            <h3 id="header2DTitle">Stock Board: 2440 × 1220 mm</h3>
           </div>
-          <div class="vp-layer-toggles" aria-label="Toggle CNC Layers">
-            <button type="button" class="layer-toggle-btn active ext" id="btnToggleLayerExt" title="Toggle Exterior Perimeter Cut Layer (03_CUT_EXTERIOR_PERIMETER)">
-              <i class="dot ext-dot"></i><span>EXTERIOR LAYER</span>
+          <div class="vp-layer-toggles" aria-label="Toggle Cut Layers">
+            <button type="button" class="layer-toggle-btn active ext" id="btnToggleLayerExt" title="Toggle Exterior Perimeter Layer">
+              <i class="dot ext-dot"></i><span>EXTERIOR</span>
             </button>
-            <button type="button" class="layer-toggle-btn active int" id="btnToggleLayerInt" title="Toggle Shared Interior Single-Pass Cut Layer (01_CUT_INTERIOR_SHARED)">
-              <i class="dot int-dot"></i><span>INTERIOR SHARED CUT</span>
+            <button type="button" class="layer-toggle-btn active int" id="btnToggleLayerInt" title="Toggle Shared Interior Cut Layer">
+              <i class="dot int-dot"></i><span>SHARED CUT</span>
             </button>
-            <button type="button" class="layer-toggle-btn active off" id="btnToggleLayerOff" title="Toggle Relative Part Offset Contours (04_PART_OFFSET_CONTOURS)">
-              <i class="dot off-dot"></i><span>PART OFFSET (-K/2)</span>
+            <button type="button" class="layer-toggle-btn active off" id="btnToggleLayerOff" title="Toggle Relative Part Offset Contour">
+              <i class="dot off-dot"></i><span>BIT OFFSET</span>
             </button>
           </div>
         </div>
@@ -339,34 +236,24 @@
           </div>
 
           <div class="floating-hint-2d" id="hint2D">
-            Scroll wheel to Zoom in/out on the 2D plan · Drag background to Pan · Click any piece to locate in 3D.
+            Scroll wheel to Zoom · Drag background to Pan · Drag handles to resize · Click any part to inspect.
           </div>
         </div>
       </div>
 
-      <!-- 3D ASSEMBLY & LIVE 2D ARCHITECTURAL PLANS/SECTIONS VIEWPORT -->
+      <!-- 3D ASSEMBLED FURNITURE VIEWPORT (CLEAN 3D ONLY; PLANS ARE IN SHOP DRAWINGS / PDF) -->
       <div class="viewport-card" id="card3D">
         <div class="viewport-header">
           <div>
-            <span class="vp-badge" id="rightVpBadge">3D ASSEMBLY &amp; ARCHITECTURAL PLANS // ZERO COLLISIONS</span>
-            <h3 id="rightVpTitle">Assembled 3D &amp; True Dimensioned Plans / Sections (Click any part to inspect)</h3>
+            <span class="vp-badge" id="rightVpBadge">3D ASSEMBLED FURNITURE // POST-OFFSET FIT</span>
+            <h3 id="rightVpTitle">Assembled 3D Preview (Open "SHOP DRAWINGS / PDF" for Architectural Plans &amp; Sections)</h3>
           </div>
-          <div class="vp-controls" id="archViewTabs">
-            <button class="vp-btn active" data-arch-mode="3d" id="btnResetCamera">3D Iso</button>
-            <button class="vp-btn" data-arch-mode="multi" id="btnViewMulti2D">4-Planos (Quad)</button>
-            <button class="vp-btn" data-arch-mode="top" id="btnViewTop3D">Planta Sup.</button>
-            <button class="vp-btn" data-arch-mode="secA" id="btnViewSecA">Secc. Planta A-A</button>
-            <button class="vp-btn" data-arch-mode="secB" id="btnViewSecB">Secc. Planta B-B</button>
-            <button class="vp-btn" data-arch-mode="secC" id="btnViewSecC">Secc. Planta C-C</button>
-            <button class="vp-btn" data-arch-mode="front_DD" id="btnViewFront3D">Sección D-D</button>
-            <button class="vp-btn" data-arch-mode="side_EE" id="btnViewSide3D">Sección E-E</button>
+          <div class="vp-controls">
+            <button class="vp-btn" id="btnResetCamera">Reset 3D View</button>
           </div>
         </div>
         <div class="canvas-3d-wrapper" id="canvas3DWrapper">
           <div id="threeContainer"></div>
-
-          <!-- LIVE 2D ARCHITECTURAL PLAN & MULTI-SECTION OVERLAY -->
-          <div id="archPlanOverlay" class="arch-plan-overlay" hidden></div>
 
           <!-- 3D FLOATING CALLOUT PIN -->
           <div id="pin3D" class="pin-3d" hidden>
@@ -510,15 +397,20 @@
           <div class="factory-card highlight-factory-card">
             <div class="factory-card-title">03 // STEP 2 — DISPATCH ORDER TO HERO FACTORY VIA EMAIL</div>
             <p class="factory-help">
-              Opens your email client or Gmail addressed to <strong id="lblTargetFactoryEmail">nacho.monereo@iaac.net</strong> pre-filled with the complete <strong>Material Required, Execution Dimensions, Post-Kerf Cut List, and Direct Interactive Blueprint Link</strong> (plus auto-downloads the <code>.DXF</code> &amp; <code>.HTML</code> blueprint to attach).
+              Sends the execution dossier, required stock boards, cut list, and direct 1:1 DXF/PDF link to <strong id="lblTargetFactoryEmail">nacho.monereo@iaac.net</strong>, or opens your Email / Gmail with the <code>.DXF</code> and <code>.HTML</code> blueprint downloaded to attach.
             </p>
-            <div class="factory-send-actions">
-              <button type="button" class="btn-factory-send" id="btnFactorySendMailto">
+            <div class="factory-send-actions" style="grid-template-columns: 1fr;">
+              <button type="button" class="btn-factory-send" id="btnFactoryDirectSend">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                <span>PACKAGE DXF + PLANS &amp; OPEN EMAIL APP</span>
+                <span>SEND DIRECT EMAIL TO HERO FACTORY + DOWNLOAD DXF &amp; PLANS</span>
+              </button>
+            </div>
+            <div class="factory-send-actions" style="margin-top: 8px; grid-template-columns: 1fr 1fr;">
+              <button type="button" class="btn-secondary" id="btnFactorySendMailto" style="width:100%;justify-content:center;">
+                <span>OPEN IN DEFAULT EMAIL APP</span>
               </button>
               <button type="button" class="btn-factory-gmail" id="btnFactorySendGmail">
-                <span>OPEN IN GMAIL WEB (PRE-FILLED)</span>
+                <span>OPEN IN GMAIL WEB</span>
               </button>
             </div>
             <div id="factoryStatusBanner" class="factory-status-banner" hidden></div>
@@ -533,7 +425,7 @@
             </div>
             <div id="factoryMaterialSummaryCards" class="factory-mat-grid"></div>
             <label class="factory-preview-lbl" for="textareaFactoryDossier">
-              Full Technical Dossier sent to Factory (Includes Shareable Blueprint Link, Material Required, CNC Tool Kerf &amp; Post-Kerf Cut List):
+              Full Technical Dossier sent to Factory (Includes Shareable Blueprint Link, Material Required, Tool Offset &amp; Execution Cut List):
             </label>
             <textarea id="textareaFactoryDossier" class="factory-dossier-textarea" readonly></textarea>
           </div>
@@ -542,6 +434,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=13"></script>
+  <script type="module" src="app.js?v=14"></script>
 </body>
 </html>
