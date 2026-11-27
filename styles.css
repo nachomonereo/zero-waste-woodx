@@ -1368,6 +1368,38 @@ input[type="range"] {
   margin-top: 2px;
 }
 
+/* LANGUAGE SWITCHER (EN / ES / NL) */
+.lang-switch {
+  display: inline-flex;
+  align-items: center;
+  border: 1.5px solid #141414;
+  background-color: var(--color-secondary);
+  height: 36px;
+}
+
+.lang-btn {
+  border: none;
+  border-right: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0 9px;
+  height: 100%;
+  cursor: pointer;
+}
+
+.lang-btn:last-child {
+  border-right: none;
+}
+
+.lang-btn.active,
+.lang-btn:hover {
+  background-color: var(--color-primary);
+  color: var(--color-secondary);
+}
+
 /* SEND TO FACTORY (HERO) BUTTONS, SIDEBAR & MODAL */
 .btn-factory {
   height: 36px;

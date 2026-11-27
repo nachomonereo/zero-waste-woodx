@@ -29,6 +29,7 @@ const SWISS_PALETTE = [
 ];
 
 const state = {
+  lang: 'en',       // 'en' | 'es' | 'nl'
   typology: 'chair',
   sheetL: 1260,     // Automatically computed from active typology parameters
   sheetW: 1200,     // Automatically computed from active typology parameters
@@ -39,7 +40,7 @@ const state = {
   showLayerExterior: true,
   showLayerInterior: true,
   showLayerOffsets: true,
-  showDims2D: true,
+  showDims2D: false, // Clean 2D board by default: only part numbers #01, #02; toggle MM button to show dimensions
   zoom2D: 1.0,
   pan2D: [0, 0],
   archViewMode: '3d',
@@ -124,109 +125,417 @@ const state = {
 
 const defaultParamsBackup = JSON.parse(JSON.stringify(state.params));
 
+const I18N = {
+  en: {
+    subtitle: 'ZERO-WASTE FURNITURE STUDIO',
+    btnPlans: 'PLANS / PDF',
+    btnShare: 'SHARE',
+    btnFactory: 'SEND TO FACTORY',
+    sec01: '01 / Design',
+    reset: 'Reset',
+    sec02: '02 / Size (mm)',
+    width: 'WIDTH',
+    depth: 'DEPTH',
+    height: 'HEIGHT',
+    sec00: '00 / Board & Bit Offset',
+    thickness: 'Thickness',
+    bitOffset: 'Bit Offset',
+    sendHero: 'SEND TO FACTORY (HERO)',
+    boardLbl: 'Board',
+    bitLbl: 'Bit',
+    offsetLbl: 'Offset',
+    layerExt: 'EXTERIOR',
+    layerInt: 'CUT',
+    layerOff: 'OFFSET',
+    view3D: '3D Furniture',
+    reset3D: 'Reset 3D',
+    shopModalTitle: 'ARCHITECTURAL PLANS & SECTIONS (MM)',
+    savePdf: 'SAVE PDF',
+    close: 'CLOSE',
+    factoryModalTitle: 'SEND TO FACTORY (HERO) — DXF, PDF & MATERIAL ORDER',
+    factorySec1: '01 // FACTORY & CLIENT',
+    factoryEmail: 'Factory Email',
+    clientName: 'Client Name',
+    clientEmail: 'Client Email',
+    orderQty: 'Quantity',
+    deliveryNotes: 'City / Notes',
+    factorySec2: '02 // FILES (DXF & PDF)',
+    copySpec: '4. COPY SPEC',
+    factorySec3: '03 // SEND ORDER BY EMAIL',
+    directSend: 'SEND EMAIL TO HERO + DOWNLOAD DXF & PLANS',
+    mailApp: 'EMAIL APP',
+    previewTitle: 'MATERIAL & EXECUTION DIMENSIONS',
+    planTop: 'TOP PLAN',
+    planSecA: 'PLAN SECTION A-A (UPPER)',
+    planSecB: 'PLAN SECTION B-B (MID)',
+    planSecC: 'PLAN SECTION C-C (BASE)',
+    vertSecD: 'LONGITUDINAL SECTION D-D',
+    vertSecE: 'CROSS SECTION E-E',
+    boardPlan: 'BOARD CUTTING PLAN (MM)',
+    iso3D: '3D ASSEMBLED VIEW',
+    cutList: 'PART DIMENSIONS (MM)',
+    partCol: 'PART',
+    nameCol: 'NAME',
+    nomCol: 'NOMINAL (MM)',
+    finCol: 'EXECUTION (MM)',
+    tabs: {
+      chair: 'Modular Sofa',
+      plankChair: 'Plank Chair',
+      stool: 'Vaulted Stool',
+      concentricTable: 'Nested Table',
+      crossLegTable: 'X-Corner Table',
+      shelf: 'Chevron Shelf',
+      cabinet: 'Credenza Cabinet',
+      curvedWall: 'Wave Wall'
+    },
+    sliders: {
+      seatWidth: 'Width',
+      toothWidth: 'Joint Width',
+      cornerRadius: 'Corner Radius',
+      reclineDeg: 'Backrest Angle',
+      chairCount: 'Chairs',
+      stoolHeight: 'Height',
+      baseSpan: 'Base Width',
+      topDiameter: 'Top Diameter',
+      shelfHeightRatio: 'Shelf Level',
+      tableLength: 'Length',
+      boardWidth: 'Board Width',
+      tableHeight: 'Height',
+      legStripWidth: 'Leg Width',
+      taperInset: 'Taper',
+      boardLength: 'Board Length',
+      legWaist: 'Leg Waist',
+      shelfCount: 'Shelves',
+      tierSpacing: 'Shelf Spacing',
+      uprightPairs: 'Upright Pairs',
+      shelfWidth: 'Shelf Width',
+      shelfDepth: 'Depth',
+      zigZagAmp: 'Chevron Depth',
+      boardCount: 'Boards (122×244)',
+      cabinetDepth: 'Depth',
+      shelfRecess: 'Inner Recess',
+      doorOpenAngle: 'Door Angle',
+      wallHeight: 'Height',
+      pairCount: 'Slat Pairs',
+      pairWidth: 'Pair Width',
+      waveAmp: 'Wave Depth',
+      waveFreq: 'Wave Frequency',
+      harmonicMix: 'Harmonic Mix',
+      phaseShift: 'Phase Shift',
+      slatSpacing: 'Slat Spacing',
+      arrangementMode: 'Pattern'
+    }
+  },
+  es: {
+    subtitle: 'ESTUDIO DE MOBILIARIO CERO RESIDUOS',
+    btnPlans: 'PLANOS / PDF',
+    btnShare: 'COMPARTIR',
+    btnFactory: 'ENVIAR A FÁBRICA',
+    sec01: '01 / Diseño',
+    reset: 'Reiniciar',
+    sec02: '02 / Medidas (mm)',
+    width: 'ANCHO',
+    depth: 'FONDO',
+    height: 'ALTO',
+    sec00: '00 / Tablero y Fresa',
+    thickness: 'Espesor',
+    bitOffset: 'Offset Fresa',
+    sendHero: 'ENVIAR A FÁBRICA (HERO)',
+    boardLbl: 'Tablero',
+    bitLbl: 'Fresa',
+    offsetLbl: 'Offset',
+    layerExt: 'EXTERIOR',
+    layerInt: 'CORTE',
+    layerOff: 'OFFSET',
+    view3D: 'Mueble 3D',
+    reset3D: 'Vista 3D',
+    shopModalTitle: 'PLANOS Y SECCIONES DEL MUEBLE (MM)',
+    savePdf: 'GUARDAR PDF',
+    close: 'CERRAR',
+    factoryModalTitle: 'ENVIAR A FÁBRICA (HERO) — DXF, PDF Y MATERIAL',
+    factorySec1: '01 // FÁBRICA Y CLIENTE',
+    factoryEmail: 'Email Fábrica',
+    clientName: 'Cliente',
+    clientEmail: 'Email Cliente',
+    orderQty: 'Cantidad',
+    deliveryNotes: 'Ciudad / Notas',
+    factorySec2: '02 // ARCHIVOS (DXF Y PDF)',
+    copySpec: '4. COPIAR DATOS',
+    factorySec3: '03 // ENVIAR PEDIDO POR EMAIL',
+    directSend: 'ENVIAR EMAIL A HERO + DESCARGAR DXF Y PLANOS',
+    mailApp: 'APP CORREO',
+    previewTitle: 'MATERIAL NECESARIO Y MEDIDAS DE EJECUCIÓN',
+    planTop: 'PLANTA SUPERIOR',
+    planSecA: 'SECCIÓN EN PLANTA A-A (SUPERIOR)',
+    planSecB: 'SECCIÓN EN PLANTA B-B (MEDIA)',
+    planSecC: 'SECCIÓN EN PLANTA C-C (BASE)',
+    vertSecD: 'SECCIÓN LONGITUDINAL D-D',
+    vertSecE: 'SECCIÓN TRANSVERSAL E-E',
+    boardPlan: 'PLANTA DE CORTE EN TABLERO (MM)',
+    iso3D: 'VISTA 3D ENSAMBLADA',
+    cutList: 'DESPIECE Y MEDIDAS (MM)',
+    partCol: 'PIEZA',
+    nameCol: 'NOMBRE',
+    nomCol: 'NOMINAL (MM)',
+    finCol: 'EJECUCIÓN (MM)',
+    tabs: {
+      chair: 'Sofá Modular',
+      plankChair: 'Silla Listón',
+      stool: 'Taburete Arco',
+      concentricTable: 'Mesa Anidada',
+      crossLegTable: 'Mesa Cruz X',
+      shelf: 'Estantería',
+      cabinet: 'Aparador',
+      curvedWall: 'Pared Onda'
+    },
+    sliders: {
+      seatWidth: 'Ancho',
+      toothWidth: 'Ancho Unión',
+      cornerRadius: 'Radio Esquina',
+      reclineDeg: 'Inclinación',
+      chairCount: 'Nº Sillas',
+      stoolHeight: 'Altura',
+      baseSpan: 'Ancho Base',
+      topDiameter: 'Diámetro Asiento',
+      shelfHeightRatio: 'Altura Balda',
+      tableLength: 'Largo',
+      boardWidth: 'Ancho Tablero',
+      tableHeight: 'Altura',
+      legStripWidth: 'Ancho Pata',
+      taperInset: 'Estrechamiento',
+      boardLength: 'Largo Tablero',
+      legWaist: 'Cintura Pata',
+      shelfCount: 'Nº Baldas',
+      tierSpacing: 'Paso Baldas',
+      uprightPairs: 'Pares Verticales',
+      shelfWidth: 'Ancho Baldas',
+      shelfDepth: 'Fondo',
+      zigZagAmp: 'Fondo Chevron',
+      boardCount: 'Tableros (122×244)',
+      cabinetDepth: 'Fondo',
+      shelfRecess: 'Remetido Interior',
+      doorOpenAngle: 'Apertura Puerta',
+      wallHeight: 'Altura',
+      pairCount: 'Pares Lamas',
+      pairWidth: 'Ancho Par',
+      waveAmp: 'Relieve Onda',
+      waveFreq: 'Frecuencia',
+      harmonicMix: 'Armónico',
+      phaseShift: 'Desfase',
+      slatSpacing: 'Separación',
+      arrangementMode: 'Patrón'
+    }
+  },
+  nl: {
+    subtitle: 'ZERO-WASTE MEUBELSTUDIO',
+    btnPlans: 'PLANNEN / PDF',
+    btnShare: 'DELEN',
+    btnFactory: 'NAAR FABRIEK',
+    sec01: '01 / Ontwerp',
+    reset: 'Reset',
+    sec02: '02 / Afmetingen (mm)',
+    width: 'BREEDTE',
+    depth: 'DIEPTE',
+    height: 'HOOGTE',
+    sec00: '00 / Plaat & Frees Offset',
+    thickness: 'Dikte',
+    bitOffset: 'Frees Offset',
+    sendHero: 'VERZEND NAAR FABRIEK (HERO)',
+    boardLbl: 'Plaat',
+    bitLbl: 'Frees',
+    offsetLbl: 'Offset',
+    layerExt: 'BUITEN',
+    layerInt: 'SNEDE',
+    layerOff: 'OFFSET',
+    view3D: '3D Meubel',
+    reset3D: '3D Reset',
+    shopModalTitle: 'ARCHITECTONISCHE PLANNEN & DOORSNEDEN (MM)',
+    savePdf: 'PDF OPSLAAN',
+    close: 'SLUITEN',
+    factoryModalTitle: 'NAAR FABRIEK (HERO) — DXF, PDF & MATERIAAL',
+    factorySec1: '01 // FABRIEK & KLANT',
+    factoryEmail: 'Fabriek E-mail',
+    clientName: 'Klantnaam',
+    clientEmail: 'Klant E-mail',
+    orderQty: 'Aantal',
+    deliveryNotes: 'Stad / Notities',
+    factorySec2: '02 // BESTANDEN (DXF & PDF)',
+    copySpec: '4. KOPIEER DATA',
+    factorySec3: '03 // VERZEND BESTELLING PER E-MAIL',
+    directSend: 'STuur E-MAIL NAAR HERO + DOWNLOAD DXF & PLANNEN',
+    mailApp: 'E-MAIL APP',
+    previewTitle: 'BENODIGD MATERIAAL & UITVOERINGSMATEN',
+    planTop: 'BOVENAANZICHT',
+    planSecA: 'PLATTEGROND SNEDE A-A (BOVEN)',
+    planSecB: 'PLATTEGROND SNEDE B-B (MIDDEN)',
+    planSecC: 'PLATTEGROND SNEDE C-C (BASIS)',
+    vertSecD: 'LANGSDOORSNEDE D-D',
+    vertSecE: 'DWARSDOORSNEDE E-E',
+    boardPlan: 'PLAAT SNIJPLAN (MM)',
+    iso3D: '3D GEASSEMBLEERD',
+    cutList: 'ONDERDELEN & MATEN (MM)',
+    partCol: 'DEEL',
+    nameCol: 'NAAM',
+    nomCol: 'NOMINAAL (MM)',
+    finCol: 'UITVOERING (MM)',
+    tabs: {
+      chair: 'Modulaire Bank',
+      plankChair: 'Plank Stoel',
+      stool: 'Boog Kruk',
+      concentricTable: 'Geneste Tafel',
+      crossLegTable: 'X-Hoek Tafel',
+      shelf: 'Chevron Kast',
+      cabinet: 'Dressoir Kast',
+      curvedWall: 'Golf Wand'
+    },
+    sliders: {
+      seatWidth: 'Breedte',
+      toothWidth: 'Verbinding Breedte',
+      cornerRadius: 'Hoekradius',
+      reclineDeg: 'Rugleuning Hoek',
+      chairCount: 'Aantal Stoelen',
+      stoolHeight: 'Hoogte',
+      baseSpan: 'Basis Breedte',
+      topDiameter: 'Zit Diameter',
+      shelfHeightRatio: 'Plank Hoogte',
+      tableLength: 'Lengte',
+      boardWidth: 'Plaat Breedte',
+      tableHeight: 'Hoogte',
+      legStripWidth: 'Poot Breedte',
+      taperInset: 'Verjonging',
+      boardLength: 'Plaat Lengte',
+      legWaist: 'Poot Taille',
+      shelfCount: 'Planken',
+      tierSpacing: 'Plank Afstand',
+      uprightPairs: 'Staander Paren',
+      shelfWidth: 'Plank Breedte',
+      shelfDepth: 'Diepte',
+      zigZagAmp: 'Chevron Diepte',
+      boardCount: 'Platen (122×244)',
+      cabinetDepth: 'Diepte',
+      shelfRecess: 'Binnen Inspringing',
+      doorOpenAngle: 'Deur Hoek',
+      wallHeight: 'Hoogte',
+      pairCount: 'Lamellen Paren',
+      pairWidth: 'Paar Breedte',
+      waveAmp: 'Golf Diepte',
+      waveFreq: 'Golf Frequentie',
+      harmonicMix: 'Harmonische Mix',
+      phaseShift: 'Faseverschuiving',
+      slatSpacing: 'Lamel Afstand',
+      arrangementMode: 'Patroon'
+    }
+  }
+};
+
+function tStr(key) {
+  const dict = I18N[state.lang] || I18N.en;
+  return dict[key] || I18N.en[key] || key;
+}
+
 const TYPOLOGY_CONFIG = {
   chair: {
-    title: 'MODULAR SOFA & CHAIR (122×244 STD)',
-    sectionTitle: '01 / Chair & Sofa Parameters (122×244 Module)',
-    primaryMetricLabel: 'FIXED SEAT HEIGHT',
-    hint: 'Standardized on 122 cm (1220 mm) board width (at 1830 mm Sofa Width, uses 1 exact 2440×1220 mm sheet!). Unified Backrest (#02) has a real through-mortise hole where the Seat Tenon Tooth (#01) locks through.',
+    title: 'MODULAR SOFA',
+    sectionTitle: '01 / Modular Sofa',
+    primaryMetricLabel: 'SEAT HEIGHT',
+    hint: '',
     sliders: [
-      { key: 'seatWidth', label: 'Seat Width (610=Armchair · 1220=2-Seat · 1830=244cm Sheet)', min: 610, max: 1830, step: 61, unit: ' mm' },
-      { key: 'toothWidth', label: 'Tenon Tooth & Mortise Hole Width', min: 120, max: 360, step: 60, unit: ' mm' },
-      { key: 'cornerRadius', label: 'Rounded Corner Fillet Radius', min: 0, max: 48, step: 6, unit: ' mm' },
-      { key: 'reclineDeg', label: 'Backrest Recline Angle', min: 0, max: 12, step: 2, unit: '°' }
+      { key: 'seatWidth', label: 'Width', min: 610, max: 1830, step: 61, unit: ' mm' },
+      { key: 'toothWidth', label: 'Joint Width', min: 120, max: 360, step: 60, unit: ' mm' },
+      { key: 'cornerRadius', label: 'Corner Radius', min: 0, max: 48, step: 6, unit: ' mm' },
+      { key: 'reclineDeg', label: 'Backrest Angle', min: 0, max: 12, step: 2, unit: '°' }
     ]
   },
   plankChair: {
-    title: 'TAPERED PLANK CHAIR (BATCH MULTIPLIER)',
-    sectionTitle: '01 / Chair Batch Production (Multiplies Board)',
-    primaryMetricLabel: 'CHAIRS IN BATCH',
-    hint: 'Fixed 199.6 × 20 cm single-plank geometry (11 parts per chair). Moving the slider multiplies the number of chairs to manufacture (1 to 6 chairs; 6 chairs fit inside a 122 cm standard sheet width).',
+    title: 'PLANK CHAIR',
+    sectionTitle: '01 / Plank Chair',
+    primaryMetricLabel: 'CHAIRS',
+    hint: '',
     sliders: [
-      { key: 'chairCount', label: 'Chairs to Manufacture (Batch Multiplier)', min: 1, max: 6, step: 1, unit: ' chairs' }
+      { key: 'chairCount', label: 'Chairs', min: 1, max: 6, step: 1, unit: '' }
     ]
   },
   stool: {
-    title: 'VAULTED ARCH STOOL (122×244 MODULE)',
-    sectionTitle: '01 / Stool Parameters (122×244 Module)',
-    primaryMetricLabel: 'SEAT HEIGHT',
-    hint: '9 interlocking parts, 100% board utilization (610×1220 mm = exact 1/2 of a 122×244 cm sheet): Central circular seat (#01) + 4 sloped vaulted legs (#02–#05) + 4 rounded triangular corner shelves (#06–#09).',
+    title: 'VAULTED STOOL',
+    sectionTitle: '01 / Vaulted Stool',
+    primaryMetricLabel: 'HEIGHT',
+    hint: '',
     sliders: [
-      { key: 'stoolHeight', label: 'Stool Height (610mm = 1220mm Half-Sheet Length)', min: 360, max: 610, step: 50, unit: ' mm' },
-      { key: 'baseSpan', label: 'Base Footprint Width (610mm = Half 122cm Width)', min: 490, max: 730, step: 30, unit: ' mm' },
-      { key: 'topDiameter', label: 'Seat & Vault Diameter (30mm steps)', min: 300, max: 450, step: 30, unit: ' mm' },
-      { key: 'shelfHeightRatio', label: 'Corner Gusset Shelf Height', min: 35, max: 65, step: 5, unit: '%' },
-      { key: 'cornerRadius', label: 'Gusset Corner Rounding Radius', min: 0, max: 32, step: 4, unit: ' mm' }
+      { key: 'stoolHeight', label: 'Height', min: 360, max: 610, step: 50, unit: ' mm' },
+      { key: 'baseSpan', label: 'Base Width', min: 490, max: 730, step: 30, unit: ' mm' },
+      { key: 'topDiameter', label: 'Top Diameter', min: 300, max: 450, step: 30, unit: ' mm' },
+      { key: 'shelfHeightRatio', label: 'Shelf Level', min: 35, max: 65, step: 5, unit: '%' },
+      { key: 'cornerRadius', label: 'Corner Radius', min: 0, max: 32, step: 4, unit: ' mm' }
     ]
   },
   concentricTable: {
-    title: 'NESTED L-LEG TABLE (122×244 SHEET)',
-    sectionTitle: '01 / Nested Table Parameters (122×244 Std)',
-    primaryMetricLabel: 'TABLE HEIGHT',
-    hint: 'Standardized on a 122 × 244 cm (2440 × 1220 mm) stock sheet: Central boat tabletop (#01) with rounded corners, nested inside 2 full-length arched apron frames (#02–#03) and 4 outer corner tapered L-legs (#04–#07).',
+    title: 'NESTED TABLE',
+    sectionTitle: '01 / Nested Table',
+    primaryMetricLabel: 'HEIGHT',
+    hint: '',
     sliders: [
-      { key: 'tableLength', label: 'Board / Table Length (2440mm = 244cm Std Sheet)', min: 1440, max: 2440, step: 100, unit: ' mm' },
-      { key: 'boardWidth', label: 'Board Width (1220mm = 122cm Std Sheet)', min: 920, max: 1220, step: 60, unit: ' mm' },
-      { key: 'tableHeight', label: 'Table & L-Leg Height (20mm steps)', min: 680, max: 780, step: 20, unit: ' mm' },
-      { key: 'legStripWidth', label: 'L-Leg & Apron Strip Width (10mm steps)', min: 70, max: 110, step: 10, unit: ' mm' },
-      { key: 'taperInset', label: 'Boat Tabletop & Arch Taper', min: 30, max: 105, step: 15, unit: ' mm' },
-      { key: 'cornerRadius', label: 'Rounded Corner Fillet Radius', min: 0, max: 48, step: 4, unit: ' mm' }
+      { key: 'tableLength', label: 'Length', min: 1440, max: 2440, step: 100, unit: ' mm' },
+      { key: 'boardWidth', label: 'Board Width', min: 920, max: 1220, step: 60, unit: ' mm' },
+      { key: 'tableHeight', label: 'Height', min: 680, max: 780, step: 20, unit: ' mm' },
+      { key: 'legStripWidth', label: 'Leg Width', min: 70, max: 110, step: 10, unit: ' mm' },
+      { key: 'taperInset', label: 'Taper', min: 30, max: 105, step: 15, unit: ' mm' },
+      { key: 'cornerRadius', label: 'Corner Radius', min: 0, max: 48, step: 4, unit: ' mm' }
     ]
   },
   crossLegTable: {
-    title: 'X-CORNER BOOMERANG TABLE (122×244 STD)',
-    sectionTitle: '01 / X-Corner Table Parameters (122×244 Std)',
-    primaryMetricLabel: 'TABLE HEIGHT',
-    hint: '3 parts from 1 rectangular board (Standardized 122 cm width): 2 slim boomerang V-legs are cut from the top-left and bottom-right corners and interlock in a 90° X-cross through the center of the rounded tabletop.',
+    title: 'X-CORNER TABLE',
+    sectionTitle: '01 / X-Corner Table',
+    primaryMetricLabel: 'HEIGHT',
+    hint: '',
     sliders: [
-      { key: 'boardLength', label: 'Stock Board Length (1830..2440 mm)', min: 1220, max: 2440, step: 61, unit: ' mm' },
-      { key: 'boardWidth', label: 'Stock Board Width (1220mm = 122cm Std Sheet)', min: 920, max: 1220, step: 60, unit: ' mm' },
-      { key: 'legWaist', label: 'Corner V-Leg Waist Width (15mm steps)', min: 90, max: 150, step: 15, unit: ' mm' },
-      { key: 'cornerRadius', label: 'Tabletop & Leg Corner Rounding', min: 0, max: 45, step: 5, unit: ' mm' }
+      { key: 'boardLength', label: 'Board Length', min: 1220, max: 2440, step: 61, unit: ' mm' },
+      { key: 'boardWidth', label: 'Board Width', min: 920, max: 1220, step: 60, unit: ' mm' },
+      { key: 'legWaist', label: 'Leg Waist', min: 90, max: 150, step: 15, unit: ' mm' },
+      { key: 'cornerRadius', label: 'Corner Radius', min: 0, max: 45, step: 5, unit: ' mm' }
     ]
   },
   shelf: {
-    title: 'CHEVRON BOOKSHELF (SEGMENTED BAYS · 122×244)',
-    sectionTitle: '01 / Segmented Chevron Shelf (122×244 Sheet)',
-    primaryMetricLabel: 'TIER SPACING',
-    hint: 'Simple Straight Cuts + Zero Holes in Verticals: The 4 (or 6) vertical chevron fins are 100% solid (no slots/holes), and each horizontal shelf strip is cut into rectangular bay segments ("trozos") that sit cleanly between the vertical fins on a 122×244 cm standard sheet.',
+    title: 'CHEVRON SHELF',
+    sectionTitle: '01 / Chevron Shelf',
+    primaryMetricLabel: 'SPACING',
+    hint: '',
     sliders: [
-      { key: 'shelfCount', label: 'Horizontal Shelf Tiers', min: 4, max: 6, step: 1, unit: ' shelves' },
-      { key: 'tierSpacing', label: 'Height Between Shelves (30/60mm multiple)', min: 240, max: 360, step: 60, unit: ' mm' },
-      { key: 'uprightPairs', label: 'Chevron Upright Pairs (2=4 Fins/3 Bays, 3=6 Fins/5 Bays)', min: 2, max: 3, step: 1, unit: ' pairs' },
-      { key: 'shelfWidth', label: 'Total Horizontal Bay Width (1100mm = 244cm Sheet)', min: 740, max: 1340, step: 60, unit: ' mm' },
-      { key: 'shelfDepth', label: 'Fin Depth (305mm × 4 = 1220mm Std Sheet Width)', min: 245, max: 365, step: 30, unit: ' mm' },
-      { key: 'zigZagAmp', label: 'Chevron Zig-Zag Amplitude', min: 25, max: 65, step: 5, unit: ' mm' },
-      { key: 'cornerRadius', label: 'Chevron Peak Rounding Radius', min: 0, max: 36, step: 6, unit: ' mm' }
+      { key: 'shelfCount', label: 'Shelves', min: 4, max: 6, step: 1, unit: '' },
+      { key: 'tierSpacing', label: 'Shelf Spacing', min: 240, max: 360, step: 60, unit: ' mm' },
+      { key: 'uprightPairs', label: 'Upright Pairs', min: 2, max: 3, step: 1, unit: '' },
+      { key: 'shelfWidth', label: 'Shelf Width', min: 740, max: 1340, step: 60, unit: ' mm' },
+      { key: 'shelfDepth', label: 'Depth', min: 245, max: 365, step: 30, unit: ' mm' },
+      { key: 'zigZagAmp', label: 'Chevron Depth', min: 25, max: 65, step: 5, unit: ' mm' },
+      { key: 'cornerRadius', label: 'Corner Radius', min: 0, max: 36, step: 6, unit: ' mm' }
     ]
   },
   cabinet: {
-    title: 'INSET-FRAME CREDENZA CABINET (122×244 STD)',
-    sectionTitle: '01 / 25mm Inset-Frame Cabinet (1 or 2 Boards 122×244)',
-    primaryMetricLabel: 'CABINET HEIGHT',
-    hint: 'Robust Outer Frame (#01–#04) with 2 Front Doors (#05–#06) recessed 25 mm inside the frame. The 4 Interior Shelves (#07–#10) are recessed behind the doors, and their leftover recess cutoff strips (#11–#12) are mounted on the back as structural anti-racking reinforcement — all cut with 0% waste from 1 or 2 standard 122×244 cm boards!',
+    title: 'CREDENZA CABINET',
+    sectionTitle: '01 / Credenza Cabinet',
+    primaryMetricLabel: 'HEIGHT',
+    hint: '',
     sliders: [
-      { key: 'boardCount', label: 'Standard 122×244 cm Boards (1 = 1220mm W · 2 = 1600mm W)', min: 1, max: 2, step: 1, unit: ' board(s)' },
-      { key: 'cabinetDepth', label: 'Outer Frame Depth (Controls 122×244 Proportions)', min: 310, max: 350, step: 10, unit: ' mm' },
-      { key: 'shelfRecess', label: 'Interior Shelf Recess (= Rear Reinforcement Height)', min: 60, max: 100, step: 10, unit: ' mm' },
-      { key: 'doorOpenAngle', label: '25mm-Inset Doors Open Angle (Inspect Interior)', min: 0, max: 85, step: 5, unit: '°' }
+      { key: 'boardCount', label: 'Boards (122×244)', min: 1, max: 2, step: 1, unit: '' },
+      { key: 'cabinetDepth', label: 'Depth', min: 310, max: 350, step: 10, unit: ' mm' },
+      { key: 'shelfRecess', label: 'Inner Recess', min: 60, max: 100, step: 10, unit: ' mm' },
+      { key: 'doorOpenAngle', label: 'Door Angle', min: 0, max: 85, step: 5, unit: '°' }
     ]
   },
   curvedWall: {
-    title: 'ZERO-WASTE WAVE WALL (122×244 SHEET)',
-    sectionTitle: '01 / Parametric Wave Wall (122×244 Std)',
-    primaryMetricLabel: 'WALL SLAT COUNT',
-    hint: 'Standardized on a 122 × 244 cm (2440 × 1220 mm) stock sheet: Each strip on the board is split by a single wave cut into 2 complementary slats (A & B). Customize wave frequency, secondary harmonic sculpting, phase progression, spacing, and wall arrangement mode.',
+    title: 'WAVE WALL',
+    sectionTitle: '01 / Wave Wall',
+    primaryMetricLabel: 'SLATS',
+    hint: '',
     sliders: [
-      { key: 'wallHeight', label: 'Wall Slat Height (2440mm = 244cm Std Sheet)', min: 1540, max: 2440, step: 60, unit: ' mm' },
-      { key: 'pairCount', label: 'Wave Cut Pairs (5 × 244mm = 1220mm Std Sheet)', min: 4, max: 8, step: 1, unit: ' pairs' },
-      { key: 'pairWidth', label: 'Strip Pair Width (244mm Std Module)', min: 184, max: 304, step: 30, unit: ' mm' },
-      { key: 'waveAmp', label: 'Primary Wave Relief Amplitude', min: 20, max: 85, step: 5, unit: ' mm' },
-      { key: 'waveFreq', label: 'Vertical Wave Frequency', min: 1.0, max: 3.0, step: 0.5, unit: 'x' },
-      { key: 'harmonicMix', label: 'Secondary Harmonic Sculpting', min: 0, max: 70, step: 10, unit: '%' },
-      { key: 'phaseShift', label: 'Phase Shift Across Slats', min: 0, max: 90, step: 15, unit: '°' },
-      { key: 'slatSpacing', label: 'Wall Concatenation Pitch (Spacing)', min: 60, max: 165, step: 15, unit: ' mm' },
-      { key: 'arrangementMode', label: 'Wall Pattern (1=Flow, 2=Alternating, 3=Mirror)', min: 1, max: 3, step: 1, unit: '' }
+      { key: 'wallHeight', label: 'Height', min: 1540, max: 2440, step: 60, unit: ' mm' },
+      { key: 'pairCount', label: 'Slat Pairs', min: 4, max: 8, step: 1, unit: '' },
+      { key: 'pairWidth', label: 'Pair Width', min: 184, max: 304, step: 30, unit: ' mm' },
+      { key: 'waveAmp', label: 'Wave Depth', min: 20, max: 85, step: 5, unit: ' mm' },
+      { key: 'waveFreq', label: 'Wave Frequency', min: 1.0, max: 3.0, step: 0.5, unit: 'x' },
+      { key: 'harmonicMix', label: 'Harmonic Mix', min: 0, max: 70, step: 10, unit: '%' },
+      { key: 'phaseShift', label: 'Phase Shift', min: 0, max: 90, step: 15, unit: '°' },
+      { key: 'slatSpacing', label: 'Slat Spacing', min: 60, max: 165, step: 15, unit: ' mm' },
+      { key: 'arrangementMode', label: 'Pattern', min: 1, max: 3, step: 1, unit: '' }
     ]
   }
 };
@@ -3100,54 +3409,27 @@ function rebuildSceneAndSheet() {
 
   const relOffsetPerSide =
     state.kerfMode === 'full_kerf' ? state.kerfWidth : state.kerfWidth / 2;
-  const modeLabel =
-    state.kerfMode === 'shared'
-      ? 'Shared Single-Pass Line'
-      : state.kerfMode === 'all_half'
-      ? 'All Edges Offset (-K/2)'
-      : 'Independent Toolpaths (-K)';
 
-  const stdSheetTag =
-    state.sheetL === 2440 && state.sheetW === 1220
-      ? ' [1 STD SHEET 122×244 CM]'
-      : state.sheetL === 2440 && state.sheetW === 2440
-      ? ' [2 STD SHEETS 122×244 CM]'
-      : state.sheetW === 1220 || state.sheetL === 1220
-      ? ' [122×244 CM STD MODULE]'
-      : '';
-
-  document.getElementById('utilizationValue').textContent =
-    state.kerfWidth > 0.05
-      ? `${netWoodPct.toFixed(1)}% (-${kerfLossPct.toFixed(1)}%)`
-      : `${nominalPct.toFixed(1)}%`;
-  document.getElementById('sheetAreaTag').textContent = `${(totalSheetArea / 1e6).toFixed(2)} m²`;
   document.getElementById('liveBoardSize').textContent = `${state.sheetL} × ${state.sheetW} mm`;
 
   const kerfSummaryEl = document.getElementById('liveKerfSummary');
   if (kerfSummaryEl) {
-    kerfSummaryEl.textContent = `Bit Ø ${state.kerfWidth.toFixed(0)} mm · Relative Part Offset: -${relOffsetPerSide.toFixed(1)} mm/edge`;
+    kerfSummaryEl.textContent = `${tStr('bitLbl')} ${state.kerfWidth.toFixed(0)} mm · ${tStr('offsetLbl')} -${relOffsetPerSide.toFixed(0)} mm`;
   }
 
   document.getElementById('header2DTitle').textContent =
-    `Stock Board: ${state.sheetL} × ${state.sheetW} mm${stdSheetTag} · Bit Offset -${relOffsetPerSide.toFixed(1)} mm`;
+    `${tStr('boardLbl')}: ${state.sheetL} × ${state.sheetW} mm`;
 
-  const cfg = TYPOLOGY_CONFIG[state.typology];
-  document.getElementById('slidersSectionTitle').textContent = cfg.sectionTitle;
-  document.getElementById('primaryHeightLabel').textContent = cfg.primaryMetricLabel;
-  document.getElementById('finalDimW').textContent = `${summaryDims.width} mm`;
-  document.getElementById('finalDimD').textContent = `${summaryDims.depth} mm`;
-  document.getElementById('finalDimH').textContent = `${summaryDims.height} mm`;
-  document.getElementById('finalDimSeat').textContent =
-    state.typology === 'curvedWall'
-      ? `${summaryDims.primaryHeight} slats`
-      : state.typology === 'plankChair'
-      ? `${summaryDims.primaryHeight} chairs`
-      : `${summaryDims.primaryHeight} mm`;
-  document.getElementById('ergonomicBadge').textContent = summaryDims.ergonomicNote;
+  const dict = I18N[state.lang] || I18N.en;
+  const tabTitle = (dict.tabs && dict.tabs[state.typology]) || TYPOLOGY_CONFIG[state.typology].title;
+  document.getElementById('slidersSectionTitle').textContent = `${tStr('sec01')} — ${tabTitle}`;
+  document.getElementById('finalDimW').textContent = `${summaryDims.width}`;
+  document.getElementById('finalDimD').textContent = `${summaryDims.depth}`;
+  document.getElementById('finalDimH').textContent = `${summaryDims.height}`;
 
-  document.getElementById('overlayModelName').textContent = cfg.title;
+  document.getElementById('overlayModelName').textContent = tabTitle.toUpperCase();
   document.getElementById('overlayDimsText').textContent =
-    `W ${summaryDims.width} × D ${summaryDims.depth} × H ${summaryDims.height} mm | Bit Ø ${state.kerfWidth.toFixed(0)}mm (-${relOffsetPerSide.toFixed(1)}mm/edge)`;
+    `${summaryDims.width} × ${summaryDims.depth} × ${summaryDims.height} mm`;
 
   render2DSheet(pieces, handles);
   render3DFurniture(pieces);
@@ -3330,21 +3612,21 @@ function render2DSheet(pieces, handles) {
     </defs>
   `;
 
-  // Top & Left Overall Architectural Dimension Lines (Cotas Generales de Plancha)
+  // Minimal Top & Left Board Dimensions (L mm & W mm)
   html += `
     <g fill="#141414" font-family="JetBrains Mono" font-size="22" font-weight="700" text-anchor="middle">
       <line x1="${-L / 2}" y1="${-W / 2 - 20}" x2="${-L / 2}" y2="${-W / 2 - 64}" stroke="#141414" stroke-width="2.5" />
       <line x1="${L / 2}" y1="${-W / 2 - 20}" x2="${L / 2}" y2="${-W / 2 - 64}" stroke="#141414" stroke-width="2.5" />
       <line x1="${-L / 2}" y1="${-W / 2 - 44}" x2="${L / 2}" y2="${-W / 2 - 44}" stroke="#141414" stroke-width="3" />
-      <rect x="-360" y="${-W / 2 - 68}" width="720" height="42" fill="#EFECE4" />
-      <text x="0" y="${-W / 2 - 40}">STOCK L: ${L} mm · KERF K=${state.kerfWidth.toFixed(1)}mm (OFFSET -${relOffset.toFixed(2)}mm)</text>
+      <rect x="-150" y="${-W / 2 - 68}" width="300" height="40" fill="#EFECE4" />
+      <text x="0" y="${-W / 2 - 40}">${L} mm</text>
 
       <line x1="${-L / 2 - 20}" y1="${-W / 2}" x2="${-L / 2 - 64}" y2="${-W / 2}" stroke="#141414" stroke-width="2.5" />
       <line x1="${-L / 2 - 20}" y1="${W / 2}" x2="${-L / 2 - 64}" y2="${W / 2}" stroke="#141414" stroke-width="2.5" />
       <line x1="${-L / 2 - 44}" y1="${-W / 2}" x2="${-L / 2 - 44}" y2="${W / 2}" stroke="#141414" stroke-width="3" />
       <g transform="translate(${-L / 2 - 56}, 0) rotate(-90)">
-        <rect x="-140" y="-24" width="280" height="34" fill="#EFECE4" />
-        <text x="0" y="0">BOARD W: ${W} mm</text>
+        <rect x="-110" y="-24" width="220" height="34" fill="#EFECE4" />
+        <text x="0" y="0">${W} mm</text>
       </g>
     </g>
   `;
@@ -3710,21 +3992,18 @@ function updatePieceHUD() {
   }
 
   const numStr = String(idx + 1).padStart(2, '0');
-  const [nomW, nomH] = piece.nominalBox || [0, 0];
   const [offW, offH] = piece.offsetBox || [0, 0];
-  const [dW, dH] = piece.offsetDelta || [0, 0];
-  const kerfInfo = `Nominal: ${nomW.toFixed(1)}×${nomH.toFixed(1)} mm → Finished: ${offW.toFixed(1)}×${offH.toFixed(1)} mm (Δ ${dW.toFixed(1)} / ${dH.toFixed(1)} mm)`;
 
   if (hud) {
     hud.hidden = false;
     document.getElementById('hudColor').style.background = piece.color;
-    document.getElementById('hudTitle').textContent = `#${numStr} ${piece.name} — ${kerfInfo}`;
-    document.getElementById('hudDesc').textContent = piece.sharedWith;
+    document.getElementById('hudTitle').textContent = `#${numStr} ${piece.name}`;
+    document.getElementById('hudDesc').textContent = `${Math.round(offW)} × ${Math.round(offH)} × ${state.thickness} mm`;
   }
 
   if (pin3D) {
     pin3D.hidden = false;
-    document.getElementById('pin3DTag').textContent = `PART #${numStr} ${piece.name.toUpperCase()}`;
+    document.getElementById('pin3DTag').textContent = `#${numStr}`;
   }
 }
 
@@ -3781,10 +4060,77 @@ renderer.domElement.addEventListener('pointerup', (e) => {
 // ============================================================================
 // UI CONTROLS & DESIGN-SPECIFIC SLIDERS + CNC KERF & LAYER TOGGLES
 // ============================================================================
+function applyLanguageUI() {
+  const dict = I18N[state.lang] || I18N.en;
+  document.documentElement.lang = state.lang;
+
+  document.querySelectorAll('#langSwitch .lang-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.getAttribute('data-lang') === state.lang);
+  });
+
+  document.querySelectorAll('[data-i18n-tab]').forEach((el) => {
+    const k = el.getAttribute('data-i18n-tab');
+    if (dict.tabs && dict.tabs[k]) el.textContent = dict.tabs[k];
+  });
+
+  const setTxt = (id, val) => {
+    const el = document.getElementById(id);
+    if (el && val) el.textContent = val;
+  };
+
+  setTxt('lblAppSubtitle', dict.subtitle);
+  setTxt('lblBtnPlans', dict.btnPlans);
+  setTxt('lblBtnShare', dict.btnShare);
+  setTxt('lblBtnFactory', dict.btnFactory);
+  setTxt('btnResetParams', dict.reset);
+  setTxt('lblSec02Title', dict.sec02);
+  setTxt('lblDimW', dict.width);
+  setTxt('lblDimD', dict.depth);
+  setTxt('lblDimH', dict.height);
+  setTxt('lblSec00Title', dict.sec00);
+  setTxt('lblThickness', dict.thickness);
+  setTxt('lblBitDiameter', dict.bitOffset);
+  setTxt('lblSidebarSendFactory', dict.sendHero);
+  setTxt('lblLayerExt', dict.layerExt);
+  setTxt('lblLayerInt', dict.layerInt);
+  setTxt('lblLayerOff', dict.layerOff);
+  setTxt('rightVpTitle', dict.view3D);
+  setTxt('btnResetCamera', dict.reset3D);
+  setTxt('lblShopModalTitle', dict.shopModalTitle);
+  setTxt('lblShopBtnFactory', dict.btnFactory);
+  setTxt('lblShopBtnShare', dict.btnShare);
+  setTxt('lblShopBtnPdf', dict.savePdf);
+  setTxt('lblShopBtnClose', dict.close);
+  setTxt('lblFactoryModalTitle', dict.factoryModalTitle);
+  setTxt('lblFactoryBtnClose', dict.close);
+  setTxt('lblFactorySec1', dict.factorySec1);
+  setTxt('lblFactoryEmail', dict.factoryEmail);
+  setTxt('lblClientName', dict.clientName);
+  setTxt('lblClientEmail', dict.clientEmail);
+  setTxt('lblOrderQty', dict.orderQty);
+  setTxt('lblDeliveryNotes', dict.deliveryNotes);
+  setTxt('lblFactorySec2', dict.factorySec2);
+  setTxt('lblBtnCopySpec', dict.copySpec);
+  setTxt('lblFactorySec3', dict.factorySec3);
+  setTxt('lblBtnDirectSend', dict.directSend);
+  setTxt('lblBtnMailApp', dict.mailApp);
+  setTxt('lblFactoryPreviewTitle', dict.previewTitle);
+
+  buildDynamicSlidersUI();
+  syncKerfDisplay();
+  rebuildSceneAndSheet();
+}
+
+document.querySelectorAll('#langSwitch .lang-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    state.lang = btn.getAttribute('data-lang') || 'en';
+    applyLanguageUI();
+  });
+});
+
 function buildDynamicSlidersUI() {
   const cfg = TYPOLOGY_CONFIG[state.typology];
-  document.getElementById('typologyHint').textContent = cfg.hint;
-
+  const dict = I18N[state.lang] || I18N.en;
   const container = document.getElementById('dynamicSliders');
   const pObj = state.params[state.typology];
 
@@ -3792,10 +4138,11 @@ function buildDynamicSlidersUI() {
     .map((s) => {
       const val = pObj[s.key];
       const formatted = `${val}${s.unit}`;
+      const lbl = (dict.sliders && dict.sliders[s.key]) || s.label;
       return `
         <div class="control-group">
           <div class="control-label">
-            <label>${s.label}</label>
+            <label>${lbl}</label>
             <span class="val-display" id="dynVal_${s.key}">${formatted}</span>
           </div>
           <input
@@ -3850,7 +4197,7 @@ function syncKerfDisplay() {
   const rel = state.kerfWidth / 2;
   const valKerfEl = document.getElementById('valKerf');
   if (valKerfEl) {
-    valKerfEl.textContent = `${state.kerfWidth.toFixed(0)} mm (-${rel.toFixed(1)} mm/edge)`;
+    valKerfEl.textContent = `${state.kerfWidth.toFixed(0)} mm (-${rel.toFixed(0)} mm)`;
   }
   document.querySelectorAll('#bitFixedButtons [data-bit]').forEach((btn) => {
     const bVal = parseFloat(btn.getAttribute('data-bit'));
@@ -4109,87 +4456,42 @@ function computePiece3DBoundingBoxes(pieces, T) {
 
 function getTypologyPlanSectionLevels(typology, summaryDims) {
   const H = summaryDims.height;
-  switch (typology) {
-    case 'chair':
-      return {
-        yA: 560,
-        labelA: 'SECCIÓN EN PLANTA A-A (Y = +560 MM · ARMRESTS & BACKREST)',
-        subA: 'Upper horizontal plan section cutting through Left & Right Armrest Panels #04–#05 and Reclined Backrest #02',
-        yB: 420,
-        labelB: 'SECCIÓN EN PLANTA B-B (Y = +420 MM · SEAT TENON & MORTISE JOINT)',
-        subB: 'Mid horizontal plan section cutting through Seat Panel #01 Tenon Tooth locked inside Backrest Mortise #02 & Key #06',
-        yC: 210,
-        labelC: 'SECCIÓN EN PLANTA C-C (Y = +210 MM · LOWER APRON & REAR SPINE)',
-        subC: 'Lower horizontal plan section cutting through Front Support Apron #03, Rear Vertical Spine #02 & Side Walls #04–#05'
-      };
-    case 'cabinet': {
-      const cabH = state.params.cabinet.cabinetHeight || H;
-      const plinthH = Math.round(cabH * 0.30);
-      const upperBayY = Math.round(plinthH + (cabH - plinthH) * 0.72);
-      const midShelfY = Math.round(plinthH + (cabH - plinthH) * 0.36);
-      const lowerPlinthY = Math.round(plinthH * 0.5);
-      return {
-        yA: upperBayY,
-        labelA: `SECCIÓN EN PLANTA A-A (Y = +${upperBayY} MM · 25MM INSET DOORS & UPPER REAR BRACE)`,
-        subA: `Upper horizontal cut through Outer Frame Walls #03–#04, 25mm Inset Doors #05–#06, Central Partition & Upper Rear Brace #11`,
-        yB: midShelfY,
-        labelB: `SECCIÓN EN PLANTA B-B (Y = +${midShelfY} MM · RECESSED INTERIOR SHELVES #07–#08)`,
-        subB: `Mid horizontal cut showing the 4 Recessed Interior Shelves (-${state.params.cabinet.shelfRecess}mm setback) behind the 25mm Inset Doors`,
-        yC: lowerPlinthY,
-        labelC: `SECCIÓN EN PLANTA C-C (Y = +${lowerPlinthY} MM · OPEN PLINTH & LOWER REINFORCEMENT)`,
-        subC: `Lower horizontal cut through Outer Frame Walls #03–#04, Open Plinth Bay & Lower Rear Reinforcement Rail #12`
-      };
-    }
-    case 'shelf': {
-      const sp = state.params.shelf.tierSpacing || 300;
-      const yA = Math.min(H - 60, 70 + sp * 3 + 30);
-      const yB = Math.min(H - 120, 70 + sp * 1 + 40);
-      const yC = 85;
-      return {
-        yA,
-        labelA: `SECCIÓN EN PLANTA A-A (Y = +${yA} MM · UPPER CHEVRON ZIG-ZAG PROFILE)`,
-        subA: 'Upper horizontal plan section through Solid Vertical Chevron Fins (0 holes) & Upper Segmented Shelf Bays ("Trozos")',
-        yB,
-        labelB: `SECCIÓN EN PLANTA B-B (Y = +${yB} MM · MID TIER SEGMENTED BAYS)`,
-        subB: 'Mid horizontal plan section cutting through Chevron Peak/Valley offset & Intermediate Segmented Shelf Bays',
-        yC,
-        labelC: `SECCIÓN EN PLANTA C-C (Y = +${yC} MM · BASE TIER 01 & FOOTPRINT)`,
-        subC: 'Lower horizontal plan section cutting through Tier 01 Segmented Bays & Base Footprint of Solid Chevron Fins'
-      };
-    }
-    case 'stool': {
-      const yA = Math.round(H * 0.78);
-      const yB = Math.round(H * (state.params.stool.shelfHeightRatio || 50) / 100);
-      const yC = Math.round(H * 0.20);
-      return {
-        yA,
-        labelA: `SECCIÓN EN PLANTA A-A (Y = +${yA} MM · UPPER VAULTED ARCH RIBS)`,
-        subA: 'Upper horizontal cut beneath Circular Seat Disc #01 through the 4 Vaulted Arch Legs #02–#05',
-        yB,
-        labelB: `SECCIÓN EN PLANTA B-B (Y = +${yB} MM · 4 TRIANGULAR CORNER SHELF GUSSETS)`,
-        subB: 'Mid horizontal cut through the 4 Rounded Triangular Corner Shelf Gussets #06–#09 & Interlocking Legs',
-        yC,
-        labelC: `SECCIÓN EN PLANTA C-C (Y = +${yC} MM · LOWER VAULT OPENING & LEG FOOTPRINT)`,
-        subC: 'Lower horizontal cut showing the 4 outer floor leg contact pads and central vaulted arch opening'
-      };
-    }
-    default: {
-      const yA = Math.round(H * 0.78);
-      const yB = Math.round(H * 0.48);
-      const yC = Math.round(H * 0.20);
-      return {
-        yA,
-        labelA: `SECCIÓN EN PLANTA A-A (Y = +${yA} MM · UPPER APRON & CROWN JOINT)`,
-        subA: 'Upper horizontal plan section right below the tabletop/crown interlocking joint',
-        yB,
-        labelB: `SECCIÓN EN PLANTA B-B (Y = +${yB} MM · MID STRUCTURAL LEG SECTION)`,
-        subB: 'Mid-height horizontal plan section cutting through the interlocking structural legs',
-        yC,
-        labelC: `SECCIÓN EN PLANTA C-C (Y = +${yC} MM · LOWER FLOOR FOOTPRINT)`,
-        subC: 'Lower horizontal plan section cutting near the floor datum (+0.00 mm) support footprint'
-      };
-    }
+  let yA = Math.round(H * 0.78);
+  let yB = Math.round(H * 0.48);
+  let yC = Math.round(H * 0.20);
+
+  if (typology === 'chair') {
+    yA = 560;
+    yB = 420;
+    yC = 210;
+  } else if (typology === 'cabinet') {
+    const cabH = state.params.cabinet.cabinetHeight || H;
+    const plinthH = Math.round(cabH * 0.30);
+    yA = Math.round(plinthH + (cabH - plinthH) * 0.72);
+    yB = Math.round(plinthH + (cabH - plinthH) * 0.36);
+    yC = Math.round(plinthH * 0.5);
+  } else if (typology === 'shelf') {
+    const sp = state.params.shelf.tierSpacing || 300;
+    yA = Math.min(H - 60, 70 + sp * 3 + 30);
+    yB = Math.min(H - 120, 70 + sp * 1 + 40);
+    yC = 85;
+  } else if (typology === 'stool') {
+    yA = Math.round(H * 0.78);
+    yB = Math.round(H * (state.params.stool.shelfHeightRatio || 50) / 100);
+    yC = Math.round(H * 0.20);
   }
+
+  return {
+    yA,
+    labelA: `${tStr('planSecA')} (Y = +${yA} MM)`,
+    subA: `Y = +${yA} mm`,
+    yB,
+    labelB: `${tStr('planSecB')} (Y = +${yB} MM)`,
+    subB: `Y = +${yB} mm`,
+    yC,
+    labelC: `${tStr('planSecC')} (Y = +${yC} MM)`,
+    subC: `Y = +${yC} mm`
+  };
 }
 
 function drawSvgCotaH(x1, x2, y, labelText, color = '#C83228', tickDir = 1) {
@@ -4566,81 +4868,63 @@ function buildArchitecturalPlansAndSectionsHtml(pieces, summaryDims, cfg, T, K, 
   return `
     <div class="arch-plans-wrap">
       <div class="shop-view-title">
-        <span>VIEW 02 // HORIZONTAL ARCHITECTURAL PLANS &amp; MULTI-LEVEL PLAN SECTIONS (PLANTA SUPERIOR + SECCIÓN A-A + SECCIÓN B-B + SECCIÓN C-C)</span>
-        <span>TRUE 3D POST-KERF PROJECTION · ALL DIMENSIONS IN MM</span>
+        <span>02 // ${tStr('planTop')} &amp; A-A / B-B / C-C (MM)</span>
+        <span>${summaryDims.width} × ${summaryDims.depth} MM</span>
       </div>
       <div class="arch-plans-4col">
         <div class="arch-plan-cell">
           <div class="arch-plan-cell-head">
-            <span class="arch-plan-badge">02.1 // PLANTA SUPERIOR ACOTADA (TOP PLAN)</span>
-            <span class="arch-plan-cut-tag">VIEW FROM +Y</span>
+            <span class="arch-plan-badge">02.1 // ${tStr('planTop')}</span>
+            <span class="arch-plan-cut-tag">+Y</span>
           </div>
           ${svgTopPlan}
-          <div style="font-family:var(--font-mono);font-size:9.5px;color:#444;margin-top:6px;">
-            Full horizontal roof/top projection showing vertical section cut planes <strong>D-D</strong> (Longitudinal) and <strong>E-E</strong> (Transversal).
-          </div>
         </div>
 
         <div class="arch-plan-cell">
           <div class="arch-plan-cell-head">
             <span class="arch-plan-badge">02.2 // ${levels.labelA}</span>
-            <span class="arch-plan-cut-tag">CUT Y = +${levels.yA} MM</span>
+            <span class="arch-plan-cut-tag">Y = +${levels.yA} MM</span>
           </div>
           ${svgPlanSecA}
-          <div style="font-family:var(--font-mono);font-size:9.5px;color:#444;margin-top:6px;">
-            ${levels.subA}
-          </div>
         </div>
 
         <div class="arch-plan-cell">
           <div class="arch-plan-cell-head">
             <span class="arch-plan-badge">02.3 // ${levels.labelB}</span>
-            <span class="arch-plan-cut-tag">CUT Y = +${levels.yB} MM</span>
+            <span class="arch-plan-cut-tag">Y = +${levels.yB} MM</span>
           </div>
           ${svgPlanSecB}
-          <div style="font-family:var(--font-mono);font-size:9.5px;color:#444;margin-top:6px;">
-            ${levels.subB}
-          </div>
         </div>
 
         <div class="arch-plan-cell">
           <div class="arch-plan-cell-head">
             <span class="arch-plan-badge">02.4 // ${levels.labelC}</span>
-            <span class="arch-plan-cut-tag">CUT Y = +${levels.yC} MM</span>
+            <span class="arch-plan-cut-tag">Y = +${levels.yC} MM</span>
           </div>
           ${svgPlanSecC}
-          <div style="font-family:var(--font-mono);font-size:9.5px;color:#444;margin-top:6px;">
-            ${levels.subC}
-          </div>
         </div>
       </div>
 
       <div class="shop-view-title">
-        <span>VIEW 03 // VERTICAL ARCHITECTURAL SECTIONS OF THE FURNITURE (SECCIÓN LONGITUDINAL D-D &amp; SECCIÓN TRANSVERSAL E-E)</span>
-        <span>45° HATCH = SECTIONED TIMBER (T = ${T} MM)</span>
+        <span>03 // ${tStr('vertSecD')} &amp; ${tStr('vertSecE')} (MM)</span>
+        <span>T = ${T} MM</span>
       </div>
       <div class="arch-sections-2col">
         <div class="arch-plan-cell">
           <div class="arch-plan-cell-head">
-            <span class="arch-plan-badge">03.1 // SECCIÓN LONGITUDINAL / ALZADO D-D (XY PLANE)</span>
-            <span class="arch-plan-cut-tag">W ${summaryDims.width} × H ${summaryDims.height} MM</span>
+            <span class="arch-plan-badge">03.1 // ${tStr('vertSecD')}</span>
+            <span class="arch-plan-cut-tag">${summaryDims.width} × ${summaryDims.height} MM</span>
           </div>
           ${svgLongSecDD}
         </div>
 
         <div class="arch-plan-cell">
           <div class="arch-plan-cell-head">
-            <span class="arch-plan-badge">03.2 // SECCIÓN TRANSVERSAL LATERAL E-E (ZY PLANE AT X = 0)</span>
-            <span class="arch-plan-cut-tag">D ${summaryDims.depth} × H ${summaryDims.height} MM</span>
+            <span class="arch-plan-badge">03.2 // ${tStr('vertSecE')}</span>
+            <span class="arch-plan-cut-tag">${summaryDims.depth} × ${summaryDims.height} MM</span>
           </div>
           ${svgCrossSecEE}
         </div>
-      </div>
-
-      <div class="arch-legend-bar">
-        <span><strong>HATCHED ELEMENTS (45°):</strong> TIMBER PANELS SLICED BY SECTION PLANE (T = ${T} MM)</span>
-        <span><strong>KERF COMPENSATION:</strong> K = ${K.toFixed(1)} MM (RELATIVE EDGE OFFSET -${relOffset.toFixed(2)} MM/SIDE)</span>
-        <span><strong>3D JOINT TOLERANCE:</strong> ±0.5 MM POST-KERF TIGHTENED FIT</span>
       </div>
     </div>
   `;
@@ -4653,7 +4937,7 @@ function buildShopDrawing2DSvg(pieces, L, W, cnc) {
   const vbW = L + pad * 2;
   const vbH = W + pad * 2;
 
-  let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vbX} ${vbY} ${vbW} ${vbH}" width="100%" height="310" style="background:#FAF8F3;border:1px solid #D8D3C8;">`;
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vbX} ${vbY} ${vbW} ${vbH}" width="100%" height="290" style="background:#FAF8F3;border:1px solid #D8D3C8;">`;
 
   // Top & Left Overall Dimension Cotas
   s += `
@@ -4661,15 +4945,15 @@ function buildShopDrawing2DSvg(pieces, L, W, cnc) {
       <line x1="${-L / 2}" y1="${-W / 2 - 20}" x2="${-L / 2}" y2="${-W / 2 - 75}" stroke="#141414" stroke-width="3" />
       <line x1="${L / 2}" y1="${-W / 2 - 20}" x2="${L / 2}" y2="${-W / 2 - 75}" stroke="#141414" stroke-width="3" />
       <line x1="${-L / 2}" y1="${-W / 2 - 50}" x2="${L / 2}" y2="${-W / 2 - 50}" stroke="#141414" stroke-width="3.5" />
-      <rect x="-260" y="${-W / 2 - 76}" width="520" height="44" fill="#FAF8F3" />
-      <text x="0" y="${-W / 2 - 44}">STOCK LENGTH: ${L} MM</text>
+      <rect x="-180" y="${-W / 2 - 76}" width="360" height="44" fill="#FAF8F3" />
+      <text x="0" y="${-W / 2 - 44}">${L} MM</text>
 
       <line x1="${-L / 2 - 20}" y1="${-W / 2}" x2="${-L / 2 - 75}" y2="${-W / 2}" stroke="#141414" stroke-width="3" />
       <line x1="${-L / 2 - 20}" y1="${W / 2}" x2="${-L / 2 - 75}" y2="${W / 2}" stroke="#141414" stroke-width="3" />
       <line x1="${-L / 2 - 50}" y1="${-W / 2}" x2="${-L / 2 - 50}" y2="${W / 2}" stroke="#141414" stroke-width="3.5" />
       <g transform="translate(${-L / 2 - 60}, 0) rotate(-90)">
-        <rect x="-180" y="-26" width="360" height="40" fill="#FAF8F3" />
-        <text x="0" y="4">WIDTH: ${W} MM</text>
+        <rect x="-150" y="-26" width="300" height="40" fill="#FAF8F3" />
+        <text x="0" y="4">${W} MM</text>
       </g>
     </g>
   `;
@@ -4677,20 +4961,18 @@ function buildShopDrawing2DSvg(pieces, L, W, cnc) {
   // Stock Sheet outline
   s += `<rect x="${-L / 2}" y="${-W / 2}" width="${L}" height="${W}" fill="#FFFFFF" stroke="#141414" stroke-width="5" />`;
 
-  // Offset Piece Polygons (04_PART_OFFSET_CONTOURS)
+  // Offset Piece Polygons (Clean #01, #02 badge only)
   pieces.forEach((p, idx) => {
     const pts = p.offsetPoints2D || p.points2D;
     const holes = p.offsetHoles2D || p.holes2D;
     const d = pointsToSvgPath(pts, holes);
     const cx = p.points2D.reduce((acc, pt) => acc + pt[0], 0) / p.points2D.length;
     const cy = -p.points2D.reduce((acc, pt) => acc + pt[1], 0) / p.points2D.length;
-    const [offW, offH] = p.offsetBox || p.nominalBox || [0, 0];
     const numStr = String(idx + 1).padStart(2, '0');
 
     s += `<path d="${d}" fill="${p.color}" fill-opacity="0.18" stroke="#1E6B45" stroke-width="2.5" stroke-dasharray="10,5" fill-rule="evenodd" />`;
-    s += `<rect x="${(cx - 72).toFixed(1)}" y="${(cy - 26).toFixed(1)}" width="144" height="52" fill="#FFFFFF" stroke="#141414" stroke-width="2" />`;
-    s += `<text x="${cx.toFixed(1)}" y="${(cy - 6).toFixed(1)}" font-family="JetBrains Mono" font-weight="700" font-size="19" text-anchor="middle" fill="#141414">#${numStr}</text>`;
-    s += `<text x="${cx.toFixed(1)}" y="${(cy + 15).toFixed(1)}" font-family="JetBrains Mono" font-weight="600" font-size="14" text-anchor="middle" fill="#333333">${offW.toFixed(1)}×${offH.toFixed(1)}</text>`;
+    s += `<rect x="${(cx - 34).toFixed(1)}" y="${(cy - 20).toFixed(1)}" width="68" height="40" fill="#FFFFFF" stroke="#141414" stroke-width="2" />`;
+    s += `<text x="${cx.toFixed(1)}" y="${(cy + 6).toFixed(1)}" font-family="JetBrains Mono" font-weight="700" font-size="19" text-anchor="middle" fill="#141414">#${numStr}</text>`;
   });
 
   // Layer 03: Exterior Perimeter Cut Lines
@@ -4720,9 +5002,10 @@ function buildShopDrawingBlueprint() {
   const pieces = currentPiecesData;
   const summaryDims = currentSummaryDims;
   const cfg = TYPOLOGY_CONFIG[state.typology];
+  const dict = I18N[state.lang] || I18N.en;
+  const tabTitle = (dict.tabs && dict.tabs[state.typology]) || cfg.title;
   const cnc = currentCncAnalysis || buildCncFabricationAnalysis(pieces, L, W, K, state.kerfMode);
 
-  // Capture a clean 100% Assembled 3D Snapshot (no exploded transition)
   let snapshotAssembled3D = '';
   try {
     state.assembly = 1.0;
@@ -4733,23 +5016,7 @@ function buildShopDrawingBlueprint() {
     snapshotAssembled3D = '';
   }
 
-  const relOffset =
-    state.fitCompMode === 'expand_nominal'
-      ? 0
-      : state.kerfMode === 'full_kerf'
-      ? K
-      : K / 2;
-
-  const fitModeLabel =
-    state.fitCompMode === 'expand_nominal'
-      ? 'PRE-EXPANDED CUT ALLOWANCE (+K · 100% NOMINAL PART SIZE)'
-      : 'AUTO-TIGHTENED 3D ASSEMBLY & PRE-COMPENSATED MORTISES (STD 122×244 SHEET)';
-
-  const totalAreaM2 = ((L * W) / 1e6).toFixed(2);
-  const sumOffsetArea = pieces.reduce((acc, p) => acc + pieceNetArea(p, true), 0);
-  const netYieldPct = clamp((sumOffsetArea / (L * W)) * 100, 75, 100).toFixed(1);
-  const dateStr = new Date().toISOString().slice(0, 10);
-  const sharePlanUrl = generateShareableURL(true);
+  const relOffset = K / 2;
 
   const svg2DPlan = buildShopDrawing2DSvg(pieces, L, W, cnc);
   const archPlansAndSectionsHtml = buildArchitecturalPlansAndSectionsHtml(
@@ -4766,21 +5033,12 @@ function buildShopDrawingBlueprint() {
       const num = String(idx + 1).padStart(2, '0');
       const [nomW, nomH] = p.nominalBox || [0, 0];
       const [offW, offH] = p.offsetBox || [0, 0];
-      const [dW, dH] = p.offsetDelta || [0, 0];
-      const areaM2 = (pieceNetArea(p, true) / 1e6).toFixed(3);
-      const hasHoles = p.holes2D && p.holes2D.length > 0;
-      const layerBadge = hasHoles
-        ? '01_SHARED + 02_HOLES + 04_OFFSET'
-        : '01_CUT_INTERIOR_SHARED + 04_OFFSET';
       return `
         <tr>
           <td><strong>#${num}</strong></td>
           <td><span style="display:inline-block;width:10px;height:10px;background:${p.color};border:1px solid #141414;margin-right:6px;"></span><strong>${p.name}</strong></td>
-          <td>${nomW.toFixed(1)} × ${nomH.toFixed(1)} × ${T} mm</td>
+          <td>${Math.round(nomW)} × ${Math.round(nomH)} × ${T} mm</td>
           <td><strong>${offW.toFixed(1)} × ${offH.toFixed(1)} × ${T} mm</strong></td>
-          <td>Δ ${dW.toFixed(1)} / ${dH.toFixed(1)} mm</td>
-          <td>${areaM2} m²</td>
-          <td>${layerBadge}</td>
         </tr>
       `;
     })
@@ -4789,29 +5047,19 @@ function buildShopDrawingBlueprint() {
   shopDrawingSheet.innerHTML = `
     <div class="shop-header-banner">
       <div class="shop-banner-main">
-        <h2>WOOD-X // ${cfg.title} — ARCHITECTURAL PLANS, MULTI-SECTIONS &amp; CNC CUT SHEET</h2>
-        <p>FIT COMPENSATION: ${fitModeLabel}</p>
+        <h2>WOOD-X // ${tabTitle.toUpperCase()}</h2>
         <p style="margin-top:4px;color:#141414;">
-          <strong>ASSEMBLED FURNITURE:</strong> W ${summaryDims.width} × D ${summaryDims.depth} × H ${summaryDims.height} mm
-          &nbsp;|&nbsp; <strong>${cfg.primaryMetricLabel}:</strong> ${summaryDims.primaryHeight}
+          <strong>${summaryDims.width} × ${summaryDims.depth} × ${summaryDims.height} mm</strong>
         </p>
       </div>
       <div class="shop-banner-specs">
         <div class="shop-spec-cell">
-          <span>STOCK SHEET (122×244 STD)</span>
-          <strong>${L} × ${W} × ${T} mm (${totalAreaM2} m²)</strong>
+          <span>${tStr('boardLbl').toUpperCase()}</span>
+          <strong>${L} × ${W} × ${T} mm</strong>
         </div>
         <div class="shop-spec-cell">
-          <span>TOOL KERF &amp; RELATIVE OFFSET</span>
-          <strong>K = ${K.toFixed(1)} mm (Offset -${relOffset.toFixed(2)} mm)</strong>
-        </div>
-        <div class="shop-spec-cell">
-          <span>SHARED INTERIOR CUTS (01_LAYER)</span>
-          <strong>${(cnc.deduplicatedInteriorLen / 1000).toFixed(2)} m (Saved ${(cnc.sharedPassSavedLen / 1000).toFixed(2)} m)</strong>
-        </div>
-        <div class="shop-spec-cell">
-          <span>NET WOOD YIELD / PARTS</span>
-          <strong>${netYieldPct}% NET WOOD · ${pieces.length} PARTS</strong>
+          <span>${tStr('bitOffset').toUpperCase()}</span>
+          <strong>${K.toFixed(0)} mm (-${relOffset.toFixed(0)} mm)</strong>
         </div>
       </div>
     </div>
@@ -4819,8 +5067,8 @@ function buildShopDrawingBlueprint() {
     <div class="shop-grid-views">
       <div class="shop-view-box">
         <div class="shop-view-title">
-          <span>VIEW 01 // 1:1 DIMENSIONED 2D STOCK BOARD CNC &amp; SAW CUTTING PLAN (MM)</span>
-          <span>RED: 01_INTERIOR_SHARED · BLUE: 03_EXTERIOR · GREEN: 04_PART_OFFSET</span>
+          <span>01 // ${tStr('boardPlan')}</span>
+          <span>${L} × ${W} MM</span>
         </div>
         <div class="shop-view-body">
           ${svg2DPlan}
@@ -4829,13 +5077,13 @@ function buildShopDrawingBlueprint() {
 
       <div class="shop-view-box">
         <div class="shop-view-title">
-          <span>3D ASSEMBLED ISOMETRIC REFERENCE (100% POST-KERF FIT)</span>
-          <span>W ${summaryDims.width} × D ${summaryDims.depth} × H ${summaryDims.height} MM</span>
+          <span>${tStr('iso3D')}</span>
+          <span>${summaryDims.width} × ${summaryDims.depth} × ${summaryDims.height} MM</span>
         </div>
         <div class="shop-view-body">
           ${
             snapshotAssembled3D
-              ? `<img src="${snapshotAssembled3D}" alt="Assembled 3D View" class="shop-3d-snapshot" style="max-height:295px;" />`
+              ? `<img src="${snapshotAssembled3D}" alt="3D View" class="shop-3d-snapshot" style="max-height:275px;" />`
               : ''
           }
         </div>
@@ -4846,44 +5094,22 @@ function buildShopDrawingBlueprint() {
 
     <div class="shop-table-wrap">
       <div class="shop-view-title">
-        <span>VIEW 04 // TECHNICAL CUT LIST &amp; POST-KERF FINISHED DIMENSIONS SCHEDULE</span>
-        <span>ALL DIMENSIONS IN MILLIMETERS (MM)</span>
+        <span>04 // ${tStr('cutList')}</span>
+        <span>MM</span>
       </div>
       <table class="shop-table">
         <thead>
           <tr>
-            <th>PART #</th>
-            <th>COMPONENT NAME</th>
-            <th>NOMINAL CAD SIZE (L×W×T)</th>
-            <th>POST-KERF FINISHED SIZE (L×W×T)</th>
-            <th>KERF DELTA (ΔX / ΔY)</th>
-            <th>NET AREA</th>
-            <th>CNC DXF / SVG LAYERS</th>
+            <th>${tStr('partCol')}</th>
+            <th>${tStr('nameCol')}</th>
+            <th>${tStr('nomCol')}</th>
+            <th>${tStr('finCol')}</th>
           </tr>
         </thead>
         <tbody>
           ${rowsHtml}
         </tbody>
       </table>
-    </div>
-
-    <div class="shop-title-block">
-      <div class="shop-tb-cell">
-        <span>PROJECT &amp; SYSTEM</span>
-        <strong>WOOD-X // 100% ZERO-WASTE PARAMETRIC STUDIO</strong>
-      </div>
-      <div class="shop-tb-cell">
-        <span>TYPOLOGY &amp; CODE</span>
-        <strong>${cfg.title} (${state.typology.toUpperCase()})</strong>
-      </div>
-      <div class="shop-tb-cell">
-        <span>UNITS · SCALE · DATE</span>
-        <strong>MILLIMETERS (1:1 CNC) · ${dateStr}</strong>
-      </div>
-      <div class="shop-tb-cell">
-        <span>SHAREABLE SHOP DRAWING LINK</span>
-        <strong style="font-size:10px;word-break:break-all;">${sharePlanUrl}</strong>
-      </div>
     </div>
   `;
 }
@@ -5119,11 +5345,8 @@ function updateSidebarFactorySummary() {
   const W = state.sheetW;
   const T = state.thickness;
   const targetEmail = inputFactoryEmail ? inputFactoryEmail.value.trim() || 'nacho.monereo@iaac.net' : 'nacho.monereo@iaac.net';
-  const bInfo = getRequiredBoardsInfo(L, W, 1);
   el.innerHTML = `
-    <span>STOCK MATERIAL: <strong>${L}×${W}×${T} MM (${bInfo.stdSheetsPerUnit}× STD 122×244)</strong></span>
-    <span>ASSEMBLED SIZE: <strong>W ${currentSummaryDims ? currentSummaryDims.width : 0} × D ${currentSummaryDims ? currentSummaryDims.depth : 0} × H ${currentSummaryDims ? currentSummaryDims.height : 0} MM</strong></span>
-    <span>FACTORY EMAIL: <strong>${targetEmail}</strong></span>
+    <span><strong>${L}×${W}×${T} mm</strong> → ${targetEmail}</span>
   `;
 }
 
@@ -5135,12 +5358,11 @@ function buildFactoryExecutionDossier() {
   const K = state.kerfWidth;
   const pieces = currentPiecesData;
   const dims = currentSummaryDims || { width: 0, depth: 0, height: 0, primaryHeight: 0 };
-  const cnc = currentCncAnalysis || buildCncFabricationAnalysis(pieces, L, W, K, state.kerfMode);
 
   const qty = Math.max(1, parseInt(inputOrderQty ? inputOrderQty.value : '1', 10) || 1);
-  const clientName = (inputClientName && inputClientName.value.trim()) || 'WOOD-X Studio Client';
-  const clientEmail = (inputClientEmail && inputClientEmail.value.trim()) || 'Not specified';
-  const deliveryNotes = (inputDeliveryCity && inputDeliveryCity.value.trim()) || 'Standard Factory Pickup / Delivery';
+  const clientName = (inputClientName && inputClientName.value.trim()) || 'WOOD-X Client';
+  const clientEmail = (inputClientEmail && inputClientEmail.value.trim()) || '-';
+  const deliveryNotes = (inputDeliveryCity && inputDeliveryCity.value.trim()) || '-';
   const factoryEmail = (inputFactoryEmail && inputFactoryEmail.value.trim()) || 'nacho.monereo@iaac.net';
 
   if (lblTargetFactoryEmail) lblTargetFactoryEmail.textContent = factoryEmail;
@@ -5153,28 +5375,24 @@ function buildFactoryExecutionDossier() {
       : K / 2;
 
   const bInfo = getRequiredBoardsInfo(L, W, qty);
-  const matName = MATERIAL_LABELS[state.materialMode] || state.materialMode;
   const shareBlueprintUrl = generateShareableURL(true);
   const { filename: dxfFilename } = generateCurrentDxfContentAndFilename();
   const htmlPlanFilename = `wood-x-shop-drawing-${state.typology}-${L}x${W}mm.html`;
+  const locTitle = (I18N[state.lang] && I18N[state.lang].tabs && I18N[state.lang].tabs[state.typology]) || cfg.title;
 
   if (factoryMaterialSummaryCards) {
     factoryMaterialSummaryCards.innerHTML = `
       <div class="factory-mat-pill">
-        <span>REQUIRED STOCK BOARD (${qty} UNIT${qty > 1 ? 'S' : ''})</span>
-        <strong>${bInfo.totalStdSheets}× STD 122×244 CM (${L}×${W}×${T} mm)</strong>
+        <span>BOARD (${qty}×)</span>
+        <strong>${bInfo.totalStdSheets}× (${L}×${W}×${T} mm)</strong>
       </div>
       <div class="factory-mat-pill">
-        <span>MATERIAL FINISH &amp; WEIGHT</span>
-        <strong>${T}mm ${matName.split(' (')[0]} (~${bInfo.approxWeightKg} kg)</strong>
+        <span>SIZE (MM)</span>
+        <strong>${dims.width} × ${dims.depth} × ${dims.height} mm</strong>
       </div>
       <div class="factory-mat-pill">
-        <span>ASSEMBLED EXECUTION DIMENSIONS</span>
-        <strong>W ${dims.width} × D ${dims.depth} × H ${dims.height} mm</strong>
-      </div>
-      <div class="factory-mat-pill">
-        <span>CNC TOOL KERF &amp; SHARED CUT LENGTH</span>
-        <strong>K = ${K.toFixed(1)} mm (-${relOffset.toFixed(2)}mm/side) · ${((cnc.deduplicatedInteriorLen + cnc.exteriorCutLen) / 1000).toFixed(2)} m</strong>
+        <span>BIT OFFSET</span>
+        <strong>${K.toFixed(0)} mm (-${relOffset.toFixed(0)} mm)</strong>
       </div>
     `;
   }
@@ -5182,75 +5400,37 @@ function buildFactoryExecutionDossier() {
   const cutListLines = pieces
     .map((p, idx) => {
       const num = String(idx + 1).padStart(2, '0');
-      const [nomW, nomH] = p.nominalBox || [0, 0];
       const [offW, offH] = p.offsetBox || [0, 0];
-      return `  #${num} ${p.name}: Nominal ${nomW.toFixed(1)}×${nomH.toFixed(1)}×${T} mm -> Post-Kerf Execution ${offW.toFixed(1)}×${offH.toFixed(1)}×${T} mm`;
+      return `  #${num} ${p.name}: ${offW.toFixed(0)} × ${offH.toFixed(0)} × ${T} mm`;
     })
     .join('\n');
 
-  const subject = `[WOOD-X -> HERO FACTORY] CNC Order: ${cfg.title} (${qty}x) — Board ${L}x${W}x${T}mm`;
+  const subject = `[WOOD-X -> HERO] ${locTitle} (${qty}x) — ${L}x${W}x${T}mm`;
 
-  // Full technical dossier (for textarea preview, clipboard, and direct HTTP POST email):
-  const body = `HERO FACTORY — WOOD-X CNC & ARCHITECTURAL EXECUTION ORDER
-====================================================================
-1. DIRECT INTERACTIVE BLUEPRINT, 2D PLANS/SECTIONS & DXF LINK:
+  const body = `HERO FACTORY — WOOD-X ORDER
+==================================================
+1. PLANS & DXF LINK:
 ${shareBlueprintUrl}
-(Open the link above to view the exact 1:1 Shop Drawing, 4 Horizontal Plans, 2 Vertical Sections, and export the CNC DXF / PDF directly)
 
-2. CLIENT & ORDER DETAILS:
-- Client / Project: ${clientName}
-- Client Contact Email: ${clientEmail}
-- Quantity to Manufacture: ${qty} unit(s)
-- Delivery / Notes: ${deliveryNotes}
+2. CLIENT:
+- Name: ${clientName} (${clientEmail})
+- Qty: ${qty} | Notes: ${deliveryNotes}
 
-3. REQUIRED MATERIAL FOR EXECUTION (DATOS DE MATERIAL PARA FÁBRICA):
-- Furniture Typology: ${cfg.title} (${state.typology.toUpperCase()})
-- Material / Finish: ${matName}
-- Board Thickness (Espesor T): ${T} mm
-- Stock Board Size per Unit: ${L} × ${W} × ${T} mm (${bInfo.sheetTypeDesc})
-- Total Standard 122×244 cm Boards Required (for ${qty}x): ${bInfo.totalStdSheets} board(s) (${bInfo.totalAreaM2} m² total · ~${bInfo.approxWeightKg} kg)
+3. MATERIAL & EXECUTION DIMENSIONS:
+- Furniture: ${locTitle}
+- Board: ${L} × ${W} × ${T} mm (${bInfo.totalStdSheets}× std 122×244 cm)
+- Size: W ${dims.width} × D ${dims.depth} × H ${dims.height} mm
+- Bit Offset: ${K.toFixed(0)} mm (-${relOffset.toFixed(0)} mm/side)
 
-4. ASSEMBLED FURNITURE EXECUTION DIMENSIONS (COTAS FINALES DE MONTAJE):
-- Total Width (Ancho W): ${dims.width} mm
-- Total Depth (Fondo D): ${dims.depth} mm
-- Total Height (Alto H): ${dims.height} mm
-- ${cfg.primaryMetricLabel}: ${dims.primaryHeight}
-
-5. CNC BIT OFFSET & EXECUTION PARAMETERS:
-- Fixed Bit Diameter (K): ${K.toFixed(0)} mm (Relative Part Edge Offset: -${relOffset.toFixed(1)} mm/side)
-- 3D Assembly Fit: Post-Offset Auto-Tightened 3D Joints (±0.5mm tolerance)
-
-6. POST-OFFSET COMPONENT CUT LIST (${pieces.length} PARTS PER UNIT):
+4. PARTS (${pieces.length}):
 ${cutListLines}
 
-7. CNC & ARCHITECTURAL FILES:
-- 1:1 Multi-Layer CNC DXF: ${dxfFilename}
-- Architectural Plans & Multi-Sections Blueprint (PDF/HTML): ${htmlPlanFilename}
-====================================================================`;
+5. FILES:
+- DXF: ${dxfFilename}
+- Plans (PDF/HTML): ${htmlPlanFilename}
+==================================================`;
 
-  // Compact body (<1300 chars) guaranteed never to fail in Windows/macOS mailto: or Gmail URL handlers:
-  const compactMailBody = `HERO FACTORY — WOOD-X EXECUTION ORDER
---------------------------------------------------
-1. DIRECT 1:1 PLANS, SECTIONS & DXF LINK:
-${shareBlueprintUrl}
-
-2. CLIENT & ORDER:
-- Client: ${clientName} (${clientEmail})
-- Quantity: ${qty} unit(s) | Notes: ${deliveryNotes}
-
-3. REQUIRED MATERIAL FOR EXECUTION:
-- Model: ${cfg.title}
-- Stock Board per Unit: ${L} x ${W} x ${T} mm (${bInfo.sheetTypeDesc})
-- Total 122x244 cm Boards (for ${qty}x): ${bInfo.totalStdSheets} board(s) (${bInfo.totalAreaM2} m2 · ~${bInfo.approxWeightKg} kg)
-- Bit Diameter: ${K.toFixed(0)} mm (Relative Offset -${relOffset.toFixed(1)} mm/edge)
-
-4. ASSEMBLED EXECUTION DIMENSIONS:
-- Width (W): ${dims.width} mm | Depth (D): ${dims.depth} mm | Height (H): ${dims.height} mm
-
-5. ATTACHED FILES (Auto-downloaded to your computer):
-- ${dxfFilename} (1:1 CNC DXF)
-- ${htmlPlanFilename} (Architectural Plans & Sections PDF/HTML)
-(Full ${pieces.length}-part cut list is also copied to your clipboard and embedded in the link above)`;
+  const compactMailBody = body;
 
   if (textareaFactoryDossier) {
     textareaFactoryDossier.value = body;
@@ -5464,7 +5644,7 @@ function animate() {
 }
 
 loadStateFromURL();
-buildDynamicSlidersUI();
+applyLanguageUI();
 handleResize();
 rebuildSceneAndSheet();
 animate();
